@@ -6,6 +6,8 @@
     <title>Auto SLA - Gerador de Relatórios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tesseract.js para leitura OCR de imagens -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -58,11 +60,24 @@
 
                     <!-- Secao 2: Lista de Ocorrencias -->
                     <div class="mb-8">
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                             <h3 class="text-lg font-medium text-gray-900">Detalhamento de Ocorrências</h3>
-                            <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200">
-                                + Adicionar Ocorrência
-                            </button>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <!-- Botão de OCR -->
+                                <div class="relative w-full sm:w-auto">
+                                    <input type="file" id="ocrInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleOcrUpload(event)">
+                                    <div class="px-4 py-2 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 font-medium text-sm transition-colors border border-purple-200 flex items-center justify-center gap-2 h-full cursor-pointer">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                                        </svg>
+                                        <span id="ocrBtnText">Ler de um Print</span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200 whitespace-nowrap">
+                                    + Digitar Manual
+                                </button>
+                            </div>
                         </div>
                         
                         <div id="ocorrenciasList" class="space-y-4">
@@ -153,6 +168,85 @@
                 `;
                 list.appendChild(row);
             });
+        }
+
+        // --- LÓGICA OCR COM TESSERACT.JS ---
+        async function handleOcrUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const btnText = document.getElementById('ocrBtnText');
+            const originalText = 'Ler de um Print';
+            btnText.innerText = 'Lendo... 0%';
+
+            try {
+                // Roda o Tesseract localmente
+                const result = await Tesseract.recognize(file, 'por', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            btnText.innerText = `Lendo... ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                });
+                
+                const text = result.data.text;
+                console.log("Texto extraído:", text); // Para depuração
+                
+                // Funcao auxiliar para capturar via RegEx
+                const extract = (regex) => {
+                    const match = text.match(regex);
+                    return match ? match[1].trim() : '';
+                };
+
+                // Parsing baseado no padrão de WhatsApp
+                const dataStr = extract(/Data:\s*(.+)/i);
+                const empresa = extract(/Empresa:\s*(.+)/i);
+                const rota = extract(/Rota:\s*(.+)/i);
+                const motorista = extract(/Motorista:\s*(.+)/i);
+                const impacto = extract(/Impacto:\s*(.+)/i);
+                const tempoSocorro = extract(/Tempo de socorro:\s*(.+)/i);
+                const responsavel = extract(/Operacional responsável:\s*(.+)/i);
+                
+                // O detalhe pode pegar várias linhas, então buscamos de "Detalhe do ocorrido" até "Operacional responsável" ou até o fim
+                const detalheMatch = text.match(/Detalhe do ocorrido:\s*([\s\S]*?)(?:Operacional responsável:|$)/i);
+                const detalhe = detalheMatch ? detalheMatch[1].trim() : '';
+
+                // Montar o texto final das caixinhas
+                let descParts = [];
+                if (empresa) descParts.push(`Empresa: ${empresa}`);
+                if (rota) descParts.push(`(Rota: ${rota})`);
+                if (motorista) descParts.push(`- Motorista: ${motorista}`);
+                const cabecalhoDesc = descParts.join(' ');
+                
+                const descricaoCompleta = cabecalhoDesc ? `${cabecalhoDesc}.\nDetalhe: ${detalhe}` : detalhe;
+
+                let statusParts = [];
+                if (impacto) statusParts.push(`Impacto: ${impacto}`);
+                if (tempoSocorro) statusParts.push(`Tempo socorro: ${tempoSocorro}`);
+                if (responsavel) statusParts.push(`(Resp: ${responsavel})`);
+                
+                const statusCompleto = statusParts.join(' - ');
+
+                // Gera o novo card
+                const id = Date.now();
+                ocorrenciasData.push({
+                    id,
+                    numero: '',
+                    data: dataStr || '',
+                    descricao: descricaoCompleta.trim(),
+                    status: statusCompleto.trim()
+                });
+
+                renderOcorrencias();
+                updateTotal();
+                
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao processar a imagem. O print precisa estar nítido e seguir o padrão.');
+            } finally {
+                btnText.innerText = originalText;
+                event.target.value = ''; // Reseta para permitir o mesmo arquivo de novo
+            }
         }
 
         document.getElementById('slaForm').addEventListener('submit', async (e) => {
