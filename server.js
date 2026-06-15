@@ -15,7 +15,9 @@ const port = 3000;
 
 let supabase = null;
 if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+    const url = process.env.SUPABASE_URL.trim();
+    const key = process.env.SUPABASE_KEY.trim();
+    supabase = createClient(url, key);
 }
 
 // Configurar o multer para upload em memória (não precisa salvar no disco)
@@ -28,9 +30,14 @@ app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/clientes', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
-    const { data, error } = await supabase.from('clientes').select('*').order('nome', { ascending: true });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+    try {
+        const { data, error } = await supabase.from('clientes').select('*').order('nome', { ascending: true });
+        if (error) return res.status(500).json({ error: error.message });
+        res.json(data);
+    } catch (e) {
+        console.error('Erro no /api/clientes:', e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/api/ocorrencias/:cliente_id', async (req, res) => {
