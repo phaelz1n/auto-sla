@@ -57,6 +57,65 @@ app.post('/api/ocorrencias/lote', async (req, res) => {
     if (hasInvalid) return res.status(400).json({ error: "Todas as ocorrências precisam de um cliente associado." });
 
     try {
+        // Agrupar por cliente e ano
+        const grouped = {};
+        for (const oc of ocorrencias) {
+            if (!oc.data) continue;
+            const match = oc.data.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+            if (!match) continue;
+            const yearStr = match[3];
+            const yearShort = yearStr.slice(-2);
+            const client = oc.cliente_id;
+            
+            const key = `${client}_${yearShort}`;
+            if (!grouped[key]) {
+                grouped[key] = { client, yearShort, yearStr, items: [] };
+            }
+            grouped[key].items.push(oc);
+        }
+
+        // Determinar o sequencial correto para cada grupo
+        for (const key of Object.keys(grouped)) {
+            const group = grouped[key];
+            
+            const { data: existingOc, error: searchError } = await supabase
+                .from('ocorrencias')
+                .select('numero_original')
+                .eq('cliente_id', group.client);
+                
+            let usedSeqs = new Set();
+            if (!searchError && existingOc) {
+                for (const row of existingOc) {
+                    if (row.numero_original && row.numero_original.endsWith(`/${group.yearShort}`)) {
+                        const m = row.numero_original.match(/^(\d+)\//);
+                        if (m) {
+                            usedSeqs.add(parseInt(m[1], 10));
+                        }
+                    }
+                }
+            }
+            
+            // Ordenar items novos por data para atribuir números cronologicamente
+            group.items.sort((a, b) => {
+                const parseDate = (str) => {
+                    const parts = str.split(/[\/\-]/);
+                    if (parts.length === 3) return parseInt(parts[2] + parts[1] + parts[0], 10);
+                    return 0;
+                };
+                return parseDate(a.data) - parseDate(b.data);
+            });
+
+            let currentSeqCandidate = 1;
+            for (const item of group.items) {
+                while (usedSeqs.has(currentSeqCandidate)) {
+                    currentSeqCandidate++;
+                }
+                usedSeqs.add(currentSeqCandidate);
+                const seqStr = String(currentSeqCandidate).padStart(3, '0');
+                item.numero_original = `${seqStr}/${group.yearShort}`;
+            }
+        }
+
         const { error } = await supabase.from('ocorrencias').insert(ocorrencias);
         if (error) return res.status(500).json({ error: error.message });
         res.json({ success: true, message: "Ocorrências salvas no banco com sucesso!" });
@@ -140,6 +199,75 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
     } catch (error) {
         console.error("Erro no OCR:", error);
         res.status(500).json({ error: 'Erro ao processar imagem pelo OCR.' });
+    }
+});
+
+// Rota para regerar a numeração de todas as ocorrências existentes
+app.post('/api/ocorrencias/regerar-numeros', async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    try {
+        const { data: todasOcorrencias, error: fetchError } = await supabase
+            .from('ocorrencias')
+            .select('id, data, cliente_id, numero_original');
+            
+        if (fetchError) throw fetchError;
+        if (!todasOcorrencias || todasOcorrencias.length === 0) {
+            return res.json({ success: true, message: "Nenhuma ocorrência encontrada." });
+        }
+
+        const grouped = {};
+        for (const oc of todasOcorrencias) {
+            if (!oc.data) continue;
+            const match = oc.data.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+            if (!match) continue;
+            const yearStr = match[3];
+            const yearShort = yearStr.slice(-2);
+            const client = oc.cliente_id;
+            
+            if (!client) continue;
+
+            const key = `${client}_${yearShort}`;
+            if (!grouped[key]) grouped[key] = { items: [] };
+            grouped[key].items.push(oc);
+        }
+
+        const updates = [];
+        for (const key of Object.keys(grouped)) {
+            const group = grouped[key];
+            const yearShort = key.split('_')[1];
+            
+            group.items.sort((a, b) => {
+                const parseDate = (str) => {
+                    const parts = str.split(/[\/\-]/);
+                    if (parts.length === 3) return parseInt(parts[2] + parts[1] + parts[0], 10);
+                    return 0;
+                };
+                const diff = parseDate(a.data) - parseDate(b.data);
+                if (diff === 0) return a.id - b.id; // stable sort
+                return diff;
+            });
+
+            let seq = 0;
+            for (const item of group.items) {
+                seq++;
+                const seqStr = String(seq).padStart(3, '0');
+                const novoNumero = `${seqStr}/${yearShort}`;
+                if (item.numero_original !== novoNumero) {
+                    updates.push({ id: item.id, numero_original: novoNumero });
+                }
+            }
+        }
+
+        let updatedCount = 0;
+        for (const up of updates) {
+            await supabase.from('ocorrencias').update({ numero_original: up.numero_original }).eq('id', up.id);
+            updatedCount++;
+        }
+
+        res.json({ success: true, message: `Numeração regerada com sucesso para ${updatedCount} ocorrências.` });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
     }
 });
 

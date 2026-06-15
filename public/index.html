@@ -83,7 +83,15 @@
 
                 <!-- ================= ABA 2: GERAR SLAs ================= -->
                 <div id="tab-relatorios" class="hidden">
-                    <h2 class="text-xl font-bold text-gray-900 mb-6">Geração de Relatórios</h2>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+                        <h2 class="text-xl font-bold text-gray-900">Geração de Relatórios</h2>
+                        <button type="button" onclick="regerarNumeracao()" id="btnRegerar" class="px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100 font-medium text-xs transition-colors border border-yellow-200 shadow-sm flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Regerar Numerações Antigas
+                        </button>
+                    </div>
                     
                     <div class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row items-end gap-4">
                         <div class="flex-1 w-full">
@@ -277,9 +285,6 @@
                 };
                 return parseDate(a.data) - parseDate(b.data);
             });
-            ocorrenciasData.forEach((oc, index) => {
-                oc.numero = (index + 1).toString();
-            });
         }
 
         function addOcorrencia() {
@@ -341,7 +346,7 @@
                         
                         <div class="sm:col-span-4 md:col-span-2">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Nº</label>
-                            <input type="text" value="${oc.numero}" onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" value="${oc.numero || ''}" placeholder="Gerado ao salvar" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed" readonly title="A numeração será gerada automaticamente de forma sequencial pelo sistema.">
                         </div>
                         
                         <div class="sm:col-span-8 md:col-span-5">
@@ -593,7 +598,7 @@
                                         ${oc.isDuplicate ? '<span class="text-xs font-bold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">⚠️ Possível Duplicata</span>' : ''}
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <span class="text-xs text-gray-500">Ref: ${oc.numero_original || '-'}</span>
+                                        <span class="text-xs text-gray-500 font-mono font-bold">Nº: ${oc.numero_original || '-'}</span>
                                         <button type="button" onclick="deletarOcorrencia('${oc.id}')" class="text-red-500 hover:text-red-700 p-1" title="Excluir Ocorrência">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
@@ -631,6 +636,32 @@
             } catch (err) {
                 console.error(err);
                 listaDiv.innerHTML = '<div class="text-red-500 py-4">Erro de conexão.</div>';
+            }
+        }
+
+        async function regerarNumeracao() {
+            if (!confirm("Tem certeza que deseja recalcular a numeração de todas as ocorrências passadas? O padrão será refeito seguindo a regra sequencial 001/ANO para cada cliente.")) return;
+            
+            const btn = document.getElementById('btnRegerar');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Processando...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/ocorrencias/regerar-numeros', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, "success");
+                    const clienteId = document.getElementById('select_cliente_relatorio').value;
+                    if (clienteId) buscarOcorrenciasCliente(clienteId);
+                } else {
+                    showToast("Erro: " + data.error, "error");
+                }
+            } catch (err) {
+                showToast("Erro de conexão.", "error");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 
