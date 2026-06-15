@@ -2,3 +2,4 @@ node_modules/
 output/
 uploads/
 template_sla.docx
+.env

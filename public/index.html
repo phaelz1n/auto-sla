@@ -6,8 +6,6 @@
     <title>Auto SLA - Gerador de Relatórios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Tesseract.js para leitura OCR de imagens -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -29,9 +27,13 @@
     <main class="max-w-4xl mx-auto px-4 py-8">
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="p-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-4">Gerar Novo SLA Operacional</h2>
-                
                 <form id="slaForm" enctype="multipart/form-data">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 border-b pb-4 gap-4">
+                        <h2 class="text-2xl font-bold text-gray-900">Gerar Novo SLA Operacional</h2>
+                        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center w-full md:w-auto submit-btn">
+                            Gerar e Baixar SLA
+                        </button>
+                    </div>
                     
                     <!-- Secao 1: Dados Basicos -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -41,41 +43,58 @@
                             <p class="mt-1 text-xs text-gray-500">Selecione a imagem que substituirá a tag {%logo} no Word.</p>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Mês de Referência</label>
-                            <input type="text" id="mes" name="mes" placeholder="Ex: Mai/26" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente</label>
+                            <input type="text" id="nome_cliente" name="nome_cliente" list="clientesList" autocomplete="off" placeholder="Ex: Perto, Ambev" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <datalist id="clientesList"></datalist>
+                            <span id="loadStatus" class="absolute right-3 top-[38px] text-xs text-gray-400"></span>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Total de Rotas</label>
-                            <input type="number" id="rotas" name="rotas" placeholder="Ex: 1771" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Título do Relatório</label>
+                            <input type="text" id="mes" name="mes" placeholder="Ex: Consolidado 2026" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Total de Ocorrências</label>
-                            <input type="number" id="ocorrencias" name="ocorrencias" placeholder="Ex: 2" required readonly class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600 cursor-not-allowed">
-                            <p class="mt-1 text-xs text-gray-500">Calculado automaticamente com base na lista abaixo.</p>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Exportação</label>
+                            <div class="flex items-center space-x-4 p-3 bg-white border border-gray-200 rounded-md">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="tipo_exportacao" value="geral" checked class="form-radio text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">SLA Consolidado (Todos os meses num só arquivo)</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="tipo_exportacao" value="mensal" class="form-radio text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">SLA Separado (Um arquivo para cada mês)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-medium text-gray-700">Total de Rotas por Mês</label>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-600">Total Ocorrências:</span>
+                                    <input type="number" id="ocorrencias" name="ocorrencias" required readonly class="w-16 px-2 py-1 bg-gray-100 border border-gray-300 rounded text-center text-sm font-bold text-gray-700 cursor-not-allowed">
+                                </div>
+                            </div>
+                            <div id="rotasContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                                <p class="text-xs text-gray-500 col-span-full">Adicione ocorrências abaixo para que os meses apareçam aqui automaticamente.</p>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Secao 2: Lista de Ocorrencias -->
                     <div class="mb-8">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                        <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-medium text-gray-900">Detalhamento de Ocorrências</h3>
-                            <div class="flex gap-2 w-full sm:w-auto">
-                                <!-- Botão de OCR -->
-                                <div class="relative w-full sm:w-auto">
-                                    <input type="file" id="ocrInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleOcrUpload(event)">
-                                    <div class="px-4 py-2 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 font-medium text-sm transition-colors border border-purple-200 flex items-center justify-center gap-2 h-full cursor-pointer">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                                        </svg>
-                                        <span id="ocrBtnText">Ler de um Print</span>
-                                    </div>
-                                </div>
-                                <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200 whitespace-nowrap">
-                                    + Digitar Manual
+                            <div class="space-x-2 flex items-center">
+                                <span class="text-xs text-gray-500 mr-2 hidden md:inline">Dica: Aperte Ctrl+V para colar um Print</span>
+                                <input type="file" id="fileImport" accept="image/*" multiple class="hidden" onchange="handleFileUpload(event)">
+                                <button type="button" id="importBtn" onclick="document.getElementById('fileImport').click()" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 font-medium text-sm transition-colors border border-blue-200">
+                                    📷 Importar Imagem
+                                </button>
+                                <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200">
+                                    + Adicionar Ocorrência
                                 </button>
                             </div>
                         </div>
@@ -93,7 +112,7 @@
 
                     <!-- Submit -->
                     <div class="pt-6 border-t flex justify-end">
-                        <button type="submit" id="submitBtn" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px]">
+                        <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px] submit-btn">
                             Gerar e Baixar SLA
                         </button>
                     </div>
@@ -104,16 +123,158 @@
 
     <script>
         let ocorrenciasData = [];
+        let rotasPorMesCache = {};
+        let clientesData = [];
+        let ultimoJsonSalvo = "";
+        let isFetchingClient = false;
+
+        async function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                const btn = document.getElementById('importBtn');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+
+                for (let i = 0; i < files.length; i++) {
+                    btn.innerHTML = `🔍 Lendo Imagem (OCR) ${i + 1}/${files.length}...`;
+                    const success = await processImageOCR(files[i]);
+                    if (!success) {
+                        break; // Se deu erro fatal (ex: rate limit), para a importação.
+                    }
+                }
+
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+            event.target.value = '';
+        }
+
+        async function processImage(file) {
+            const btn = document.getElementById('importBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🔍 Lendo Imagem (OCR)...';
+            btn.disabled = true;
+
+            await processImageOCR(file);
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        async function processImageOCR(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/api/process-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    let errMessage = "Erro ao analisar imagem pelo OCR.";
+                    try {
+                        const errJson = await response.json();
+                        if (errJson.error) errMessage = errJson.error;
+                    } catch(e) {
+                        const errText = await response.text();
+                        console.error("Server Error:", errText);
+                    }
+                    alert(errMessage);
+                    return false;
+                }
+
+                const data = await response.json();
+                
+                const id = Date.now();
+                ocorrenciasData.push({ 
+                    id, 
+                    numero: '', 
+                    data: data.data || '', 
+                    descricao: data.descricao || '', 
+                    status: data.status || '' 
+                });
+                sortOcorrencias();
+                renderOcorrencias();
+                updateTotal();
+                return true;
+                
+            } catch (error) {
+                console.error(error);
+                alert("Falha ao processar a imagem via OCR.");
+                return false;
+            }
+        }
+
+        window.addEventListener('paste', async (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            const items = e.clipboardData.items;
+            const imageFiles = [];
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    imageFiles.push(items[i].getAsFile());
+                }
+            }
+
+            if (imageFiles.length > 0) {
+                const btn = document.getElementById('importBtn');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+
+                for (let i = 0; i < imageFiles.length; i++) {
+                    btn.innerHTML = `🔍 Lendo Imagem (OCR) ${i + 1}/${imageFiles.length}...`;
+                    const success = await processImageOCR(imageFiles[i]);
+                    if (!success) {
+                        break;
+                    }
+                }
+
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            } else {
+                const text = e.clipboardData.getData('text');
+                if (text && text.length > 10) {
+                    // Texto colado ignorado, não usamos OCR para texto puro aqui.
+                }
+            }
+        });
+
+        // parseRawText removido, usando OCR agora.
+
+        function sortOcorrencias() {
+            ocorrenciasData.sort((a, b) => {
+                const parseDate = (str) => {
+                    if (!str) return 0;
+                    const parts = str.split('/');
+                    if (parts.length === 3) {
+                        return parseInt(parts[2] + parts[1] + parts[0], 10);
+                    }
+                    return 0; 
+                };
+                return parseDate(a.data) - parseDate(b.data);
+            });
+
+            // Atualiza os números para ficarem sequenciais após a ordenação
+            ocorrenciasData.forEach((oc, index) => {
+                oc.numero = (index + 1).toString();
+            });
+        }
 
         function addOcorrencia() {
             const id = Date.now();
             ocorrenciasData.push({ id, numero: '', data: '', descricao: '', status: '' });
+            sortOcorrencias();
             renderOcorrencias();
             updateTotal();
         }
 
         function removeOcorrencia(id) {
             ocorrenciasData = ocorrenciasData.filter(o => o.id !== id);
+            sortOcorrencias();
             renderOcorrencias();
             updateTotal();
         }
@@ -122,17 +283,64 @@
             const index = ocorrenciasData.findIndex(o => o.id === id);
             if (index !== -1) {
                 ocorrenciasData[index][field] = value;
+                if (field === 'data') {
+                    sortOcorrencias();
+                    renderOcorrencias();
+                }
             }
         }
 
+        function updateRotasUI() {
+            const container = document.getElementById('rotasContainer');
+            const ocorrenciasInput = document.getElementById('ocorrencias');
+            
+            const mesesSet = new Set();
+            ocorrenciasData.forEach(oc => {
+                if (oc.data) {
+                    const match = oc.data.match(/(\d{1,2})[\/\-](\d{4})/);
+                    if (match) {
+                        const mStr = match[1].padStart(2, '0') + '/' + match[2];
+                        mesesSet.add(mStr);
+                    }
+                }
+            });
+
+            const mesesUnicos = Array.from(mesesSet).sort((a, b) => {
+                const [m1, y1] = a.split('/');
+                const [m2, y2] = b.split('/');
+                return parseInt(y1+m1) - parseInt(y2+m2);
+            });
+
+            if (mesesUnicos.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-500 col-span-full">Adicione ocorrências com data (Ex: DD/MM/AAAA) para gerar os campos de rotas.</p>';
+                if(ocorrenciasInput) ocorrenciasInput.value = ocorrenciasData.length || 0;
+                return;
+            }
+
+            container.innerHTML = '';
+            mesesUnicos.forEach(m => {
+                const val = rotasPorMesCache[m] || '';
+                container.innerHTML += `
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">${m}</label>
+                        <input type="number" name="rotas_${m}" value="${val}" onchange="rotasPorMesCache['${m}'] = this.value" placeholder="Total Rotas" required class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-sm font-medium">
+                    </div>
+                `;
+            });
+            
+            if(ocorrenciasInput) ocorrenciasInput.value = ocorrenciasData.length;
+        }
+
         function updateTotal() {
-            document.getElementById('ocorrencias').value = ocorrenciasData.length;
+            updateRotasUI();
         }
 
         function renderOcorrencias() {
             const list = document.getElementById('ocorrenciasList');
             const emptyState = document.getElementById('emptyState');
             
+            // Remover as margens entre os cards antigos, se houver
+            list.className = "mt-4";
             list.innerHTML = '';
             
             if (ocorrenciasData.length === 0) {
@@ -142,111 +350,45 @@
                 emptyState.style.display = 'none';
             }
 
-            ocorrenciasData.forEach((oc, index) => {
-                const row = document.createElement('div');
-                row.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200 relative';
-                row.innerHTML = `
-                    <button type="button" onclick="removeOcorrencia(${oc.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-red-50 rounded-full w-6 h-6 flex items-center justify-center font-bold">×</button>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Nº</label>
-                            <input type="text" value="${oc.numero}" onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Data</label>
-                            <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="Ex: 19/05/2026" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Descrição</label>
-                            <textarea rows="2" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.descricao}</textarea>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Status / Resolução</label>
-                            <textarea rows="2" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.status}</textarea>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(row);
-            });
-        }
-
-        // --- LÓGICA OCR COM TESSERACT.JS ---
-        async function handleOcrUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const btnText = document.getElementById('ocrBtnText');
-            const originalText = 'Ler de um Print';
-            btnText.innerText = 'Lendo... 0%';
-
-            try {
-                // Roda o Tesseract localmente
-                const result = await Tesseract.recognize(file, 'por', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            btnText.innerText = `Lendo... ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
-                });
-                
-                const text = result.data.text;
-                console.log("Texto extraído:", text); // Para depuração
-                
-                // Funcao auxiliar para capturar via RegEx
-                const extract = (regex) => {
-                    const match = text.match(regex);
-                    return match ? match[1].trim() : '';
-                };
-
-                // Parsing baseado no padrão de WhatsApp
-                const dataStr = extract(/Data:\s*(.+)/i);
-                const empresa = extract(/Empresa:\s*(.+)/i);
-                const rota = extract(/Rota:\s*(.+)/i);
-                const motorista = extract(/Motorista:\s*(.+)/i);
-                const impacto = extract(/Impacto:\s*(.+)/i);
-                const tempoSocorro = extract(/Tempo de socorro:\s*(.+)/i);
-                const responsavel = extract(/Operacional responsável:\s*(.+)/i);
-                
-                // O detalhe pode pegar várias linhas, então buscamos de "Detalhe do ocorrido" até "Operacional responsável" ou até o fim
-                const detalheMatch = text.match(/Detalhe do ocorrido:\s*([\s\S]*?)(?:Operacional responsável:|$)/i);
-                const detalhe = detalheMatch ? detalheMatch[1].trim() : '';
-
-                // Montar o texto final das caixinhas
-                let descParts = [];
-                if (empresa) descParts.push(`Empresa: ${empresa}`);
-                if (rota) descParts.push(`(Rota: ${rota})`);
-                if (motorista) descParts.push(`- Motorista: ${motorista}`);
-                const cabecalhoDesc = descParts.join(' ');
-                
-                const descricaoCompleta = cabecalhoDesc ? `${cabecalhoDesc}.\nDetalhe: ${detalhe}` : detalhe;
-
-                let statusParts = [];
-                if (impacto) statusParts.push(`Impacto: ${impacto}`);
-                if (tempoSocorro) statusParts.push(`Tempo socorro: ${tempoSocorro}`);
-                if (responsavel) statusParts.push(`(Resp: ${responsavel})`);
-                
-                const statusCompleto = statusParts.join(' - ');
-
-                // Gera o novo card
-                const id = Date.now();
-                ocorrenciasData.push({
-                    id,
-                    numero: '',
-                    data: dataStr || '',
-                    descricao: descricaoCompleta.trim(),
-                    status: statusCompleto.trim()
-                });
-
-                renderOcorrencias();
-                updateTotal();
-                
-            } catch (e) {
-                console.error(e);
-                alert('Erro ao processar a imagem. O print precisa estar nítido e seguir o padrão.');
-            } finally {
-                btnText.innerText = originalText;
-                event.target.value = ''; // Reseta para permitir o mesmo arquivo de novo
-            }
+            const tableHtml = `
+                <div class="overflow-x-auto shadow-sm ring-1 ring-black ring-opacity-5 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-300">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="py-3 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 w-16">Nº</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900 w-32">Data</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900">Descrição</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900">Status / Resolução</th>
+                                <th scope="col" class="py-3 pl-3 pr-4 text-center text-xs font-semibold text-gray-900 w-16">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            ${ocorrenciasData.map(oc => `
+                                <tr>
+                                    <td class="whitespace-nowrap py-2 pl-4 pr-3 align-top">
+                                        <input type="text" value="${oc.numero}" onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-center focus:ring-blue-500 focus:border-blue-500 bg-gray-50">
+                                    </td>
+                                    <td class="whitespace-nowrap px-3 py-2 align-top">
+                                        <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="DD/MM/AAAA" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 resize-y">${oc.descricao}</textarea>
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 resize-y">${oc.status}</textarea>
+                                    </td>
+                                    <td class="whitespace-nowrap py-2 pl-3 pr-4 text-center align-top">
+                                        <button type="button" onclick="removeOcorrencia(${oc.id})" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md p-1.5 inline-flex items-center justify-center font-bold transition-colors" title="Remover">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            list.innerHTML = tableHtml;
         }
 
         document.getElementById('slaForm').addEventListener('submit', async (e) => {
@@ -256,13 +398,20 @@
             const cleanList = ocorrenciasData.map(({ id, ...rest }) => rest);
             document.getElementById('detalhes_ocorrencias').value = JSON.stringify(cleanList);
             
-            const btn = document.getElementById('submitBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = 'Gerando...';
-            btn.disabled = true;
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            const submitBtns = document.querySelectorAll('.submit-btn');
+            const originalTexts = [];
+            submitBtns.forEach(btn => {
+                originalTexts.push(btn.innerHTML);
+                btn.innerHTML = 'Gerando...';
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            });
 
-            const formData = new FormData(e.target);
+            const formData = new FormData(document.getElementById('slaForm'));
+
+            // Garante que o rádio selecionado está no formData
+            const exportType = document.querySelector('input[name="tipo_exportacao"]:checked').value;
+            formData.set('tipo_exportacao', exportType);
 
             try {
                 const response = await fetch('/generate', {
@@ -272,41 +421,130 @@
 
                 if (response.ok) {
                     // Download the file
+                    // Pega o nome do arquivo a partir dos headers (pode ser .docx ou .zip)
+                    let filename = 'sla_gerado.docx';
+                    const disposition = response.headers.get('content-disposition');
+                    if (disposition && disposition.indexOf('attachment') !== -1) {
+                        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                        const matches = filenameRegex.exec(disposition);
+                        if (matches != null && matches[1]) { 
+                            filename = matches[1].replace(/['"]/g, '');
+                        }
+                    }
+
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.style.display = 'none';
                     a.href = url;
-                    
-                    // Pegar o nome do arquivo dos headers se possivel
-                    const contentDisposition = response.headers.get('content-disposition');
-                    let filename = 'SLA_Operacional.docx';
-                    if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
-                        const matches = /filename="([^"]+)"/.exec(contentDisposition);
-                        if (matches != null && matches[1]) filename = matches[1];
-                    }
-
                     a.download = filename;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
-                    alert("SLA Gerado com sucesso!");
+                    document.body.removeChild(a);
                 } else {
                     const err = await response.text();
-                    alert("Erro ao gerar o SLA: " + err);
+                    alert("Erro ao gerar documento: " + err);
                 }
             } catch (error) {
                 console.error(error);
                 alert("Erro de conexão ao gerar SLA.");
             } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                submitBtns.forEach((btn, index) => {
+                    btn.innerHTML = originalTexts[index];
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                });
             }
         });
 
+        // Supabase / Persistência
+        async function loadClientes() {
+            try {
+                const res = await fetch('/api/clientes');
+                if (res.ok) {
+                    clientesData = await res.json();
+                    const datalist = document.getElementById('clientesList');
+                    datalist.innerHTML = '';
+                    clientesData.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.nome;
+                        datalist.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error("Erro ao carregar clientes", e);
+            }
+        }
+
+        async function loadOcorrenciasDoCliente(clienteNome) {
+            if (!clienteNome) return;
+            const cliente = clientesData.find(c => c.nome.toLowerCase() === clienteNome.toLowerCase());
+            if (!cliente) return; // Novo cliente
+            
+            isFetchingClient = true;
+            document.getElementById('loadStatus').innerText = "Carregando...";
+            try {
+                const res = await fetch(`/api/ocorrencias/${cliente.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    ocorrenciasData = data.map(oc => ({
+                        id: oc.id || Date.now() + Math.random(),
+                        numero: oc.numero_original,
+                        data: oc.data,
+                        descricao: oc.descricao,
+                        status: oc.status
+                    }));
+                    sortOcorrencias();
+                    renderOcorrencias();
+                    updateTotal();
+                    ultimoJsonSalvo = JSON.stringify(ocorrenciasData);
+                }
+            } catch(e) {
+                console.error("Erro ao carregar ocorrências", e);
+            } finally {
+                document.getElementById('loadStatus').innerText = "";
+                isFetchingClient = false;
+            }
+        }
+
+        document.getElementById('nome_cliente').addEventListener('change', (e) => {
+            loadOcorrenciasDoCliente(e.target.value.trim());
+        });
+
+        async function autoSave() {
+            if (isFetchingClient) return; // Não salvar enquanto estiver carregando outro cliente
+            
+            const clienteNome = document.getElementById('nome_cliente').value.trim();
+            if (!clienteNome) return;
+
+            const jsonAtual = JSON.stringify(ocorrenciasData);
+            if (jsonAtual === ultimoJsonSalvo) return; // Nada mudou
+
+            const payload = {
+                cliente_nome: clienteNome,
+                ocorrencias: ocorrenciasData
+            };
+
+            try {
+                const res = await fetch('/api/salvar-dados', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    ultimoJsonSalvo = jsonAtual;
+                    loadClientes(); // Atualiza a lista de clientes (se for um novo)
+                }
+            } catch (e) {
+                console.error("Auto-save falhou", e);
+            }
+        }
+
+        setInterval(autoSave, 15000); // Tenta salvar a cada 15 segundos silenciosamente
+
         // Init
         updateTotal();
+        loadClientes();
     </script>
 </body>
 </html>
