@@ -194,10 +194,10 @@ app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
             const nome_cliente = clienteData ? clienteData.nome : 'Cliente Desconhecido';
 
             const isRange = periodo.includes('-');
-            let mesInicial, anoInicial, mesFinal, anoFinal;
+            let mesInicial, anoInicial, mesFinal, anoFinal, parts;
             
             if (isRange) {
-                const parts = periodo.split('-');
+                parts = periodo.split('-');
                 [mesInicial, anoInicial] = parts[0].split('/');
                 [mesFinal, anoFinal] = parts[1].split('/');
             } else {
