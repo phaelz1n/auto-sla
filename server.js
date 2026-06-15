@@ -40,58 +40,52 @@ app.get('/api/ocorrencias/:cliente_id', async (req, res) => {
     res.json(data);
 });
 
-app.post('/api/salvar-dados', async (req, res) => {
+app.post('/api/ocorrencias/lote', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
     
-    let { cliente_nome, ocorrencias } = req.body;
-    if (!cliente_nome) return res.status(400).json({ error: "Nome do cliente é obrigatório" });
-    
-    cliente_nome = cliente_nome.trim();
+    const { ocorrencias } = req.body;
+    if (!ocorrencias || !ocorrencias.length) return res.status(400).json({ error: "Nenhuma ocorrência enviada" });
+
+    const hasInvalid = ocorrencias.some(o => !o.cliente_id);
+    if (hasInvalid) return res.status(400).json({ error: "Todas as ocorrências precisam de um cliente associado." });
 
     try {
-        let { data: clienteData, error: clienteError } = await supabase
-            .from('clientes')
-            .select('*')
-            .ilike('nome', cliente_nome)
-            .single();
-            
-        if (clienteError && clienteError.code !== 'PGRST116') {
-            return res.status(500).json({ error: clienteError.message });
-        }
+        const { error } = await supabase.from('ocorrencias').insert(ocorrencias);
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true, message: "Ocorrências salvas no banco com sucesso!" });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
 
-        let cliente_id;
-        if (!clienteData) {
-            const { data: newCliente, error: insertError } = await supabase
-                .from('clientes')
-                .insert([{ nome: cliente_nome }])
-                .select()
-                .single();
-            if (insertError) return res.status(500).json({ error: insertError.message });
-            cliente_id = newCliente.id;
-        } else {
-            cliente_id = clienteData.id;
-        }
+app.get('/api/clientes-com-ocorrencias', async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    const { periodo } = req.query; 
+    if (!periodo) return res.status(400).json({ error: "Período é obrigatório" });
 
-        const { error: deleteError } = await supabase
+    try {
+        const { data, error } = await supabase
             .from('ocorrencias')
-            .delete()
-            .eq('cliente_id', cliente_id);
-        if (deleteError) return res.status(500).json({ error: deleteError.message });
-
-        if (ocorrencias && ocorrencias.length > 0) {
-            const insertData = ocorrencias.map(oc => ({
-                cliente_id: cliente_id,
-                numero_original: oc.numero || '',
-                data: oc.data || '',
-                descricao: oc.descricao || '',
-                status: oc.status || ''
-            }));
+            .select('cliente_id, clientes(nome)')
+            .like('data', `%${periodo}%`);
             
-            const { error: insertOcError } = await supabase.from('ocorrencias').insert(insertData);
-            if (insertOcError) return res.status(500).json({ error: insertOcError.message });
-        }
+        if (error) return res.status(500).json({ error: error.message });
 
-        res.json({ success: true, message: "Dados salvos com sucesso!" });
+        const clientesMap = {};
+        data.forEach(oc => {
+            const cId = oc.cliente_id;
+            if (!clientesMap[cId]) {
+                clientesMap[cId] = {
+                    id: cId,
+                    nome: oc.clientes.nome,
+                    ocorrencias_count: 0
+                };
+            }
+            clientesMap[cId].ocorrencias_count++;
+        });
+        
+        res.json(Object.values(clientesMap).sort((a,b) => a.nome.localeCompare(b.nome)));
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
@@ -142,176 +136,133 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
     }
 });
 
-    app.post('/generate', upload.single('logo'), (req, res) => {
-        try {
-            const { mes, detalhes_ocorrencias, tipo_exportacao, nome_cliente, ...rest } = req.body;
-            
-            const isMensal = tipo_exportacao === 'mensal';
-            const templateFile = isMensal ? 'template_mensal.docx' : 'template_geral.docx';
-            const templatePath = path.resolve(__dirname, templateFile);
-            
-            if (!fs.existsSync(templatePath)) {
-                return res.status(400).send(`O arquivo ${templateFile} não foi encontrado na pasta raiz.`);
+app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
+    try {
+        const { periodo, clientes, rotas, tipo_exportacao } = req.body;
+        const clientesList = JSON.parse(clientes); // Array de IDs de clientes
+        const rotasMap = JSON.parse(rotas); // { cliente_id: rotas }
+        
+        const isMensal = tipo_exportacao === 'mensal';
+        const templateFile = isMensal ? 'template_mensal.docx' : 'template_geral.docx';
+        const templatePath = path.resolve(__dirname, templateFile);
+        
+        if (!fs.existsSync(templatePath)) {
+            return res.status(400).send(`O arquivo ${templateFile} não foi encontrado na pasta raiz.`);
+        }
+
+        const imageOptions = {
+            centered: false,
+            getImage: function(tagValue, tagName) {
+                if (tagName === 'logo' && req.file) return req.file.buffer;
+                return Buffer.from(''); 
+            },
+            getSize: function(img, tagValue, tagName) {
+                return [150, 50]; 
             }
+        };
+        const getImageModule = () => new ImageModule(imageOptions);
 
-            const imageOptions = {
-                centered: false,
-                getImage: function(tagValue, tagName) {
-                    if (tagName === 'logo' && req.file) return req.file.buffer;
-                    return Buffer.from(''); 
-                },
-                getSize: function(img, tagValue, tagName) {
-                    return [150, 50]; 
-                }
-            };
-            const getImageModule = () => new ImageModule(imageOptions);
+        const exportZip = new PizZip();
+        let generatedFilesCount = 0;
+        let lastBuf = null;
 
-            let ocorrenciasList = [];
-            try {
-                if (detalhes_ocorrencias) ocorrenciasList = JSON.parse(detalhes_ocorrencias);
-            } catch (e) { console.error(e); }
+        for (const cliente_id of clientesList) {
+            // Buscar dados do cliente
+            const { data: clienteData } = await supabase.from('clientes').select('nome').eq('id', cliente_id).single();
+            const nome_cliente = clienteData ? clienteData.nome : 'Cliente Desconhecido';
 
-            const rotasPorMes = {};
-            for (const key in rest) {
-                if (key.startsWith('rotas_')) {
-                    const m = key.replace('rotas_', '').trim();
-                    rotasPorMes[m] = parseInt(rest[key]) || 0;
-                }
-            }
-
+            // Buscar ocorrências do período
+            const { data: ocorrenciasData } = await supabase
+                .from('ocorrencias')
+                .select('*')
+                .eq('cliente_id', cliente_id)
+                .like('data', `%${periodo}%`);
+                
+            const ocorrenciasList = ocorrenciasData || [];
+            
             const agrupado = {};
             ocorrenciasList.forEach(oc => {
                 let m = 'Desconhecido';
                 if (oc.data) {
                     const match = oc.data.match(/(\d{1,2})[\/\-](\d{4})/);
-                    if (match) {
-                        m = match[1].padStart(2, '0') + '/' + match[2];
-                    }
+                    if (match) m = match[1].padStart(2, '0') + '/' + match[2];
                 }
                 if (!agrupado[m]) agrupado[m] = [];
                 agrupado[m].push(oc);
             });
 
-            const mesesData = [];
-            for (const m in rotasPorMes) {
-                const rotas = rotasPorMes[m];
-                const ocorrenciasMes = agrupado[m] ? agrupado[m].length : 0;
-                let meta = 100;
-                if (rotas > 0) meta = ((rotas - ocorrenciasMes) / rotas) * 100;
-                
-                let nivel = 'Limite Crítico (Plano de Ação)';
-                if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
-                else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
-
-                mesesData.push({
-                    mes: m, rotas, ocorrencias: ocorrenciasMes, 
-                    meta: meta.toFixed(2).replace('.', ','), nivel
-                });
-            }
-
-            mesesData.sort((a, b) => {
-                if(a.mes === 'Desconhecido') return 1;
-                if(b.mes === 'Desconhecido') return -1;
-                const [m1, y1] = a.mes.split('/');
-                const [m2, y2] = b.mes.split('/');
-                return parseInt(y1+m1) - parseInt(y2+m2);
-            });
-
-            // Calcula médias globais para o template Geral
-            let totalRotasGlobal = 0;
-            let totalOcorrenciasGlobal = 0;
-            for (const m in rotasPorMes) {
-                totalRotasGlobal += rotasPorMes[m];
-                totalOcorrenciasGlobal += (agrupado[m] ? agrupado[m].length : 0);
-            }
-            const numMeses = Object.keys(rotasPorMes).length || 1;
-            const mediaRotasGlobal = Math.round(totalRotasGlobal / numMeses);
-            const toleranciaOcorrenciasGlobal = Math.round(mediaRotasGlobal * 0.03);
-            const metaOcorrenciasGlobal = Math.round(mediaRotasGlobal * 0.01);
-            const padraoMinimoGlobal = Math.round(mediaRotasGlobal * 0.02);
-            const criticoOcorrenciasGlobal = Math.round(mediaRotasGlobal * 0.05);
+            const m = periodo; // Vamos usar o período digitado como Mês
+            const totalRotasMes = parseInt(rotasMap[cliente_id]) || 0;
+            const ocorrenciasMesCount = agrupado[m] ? agrupado[m].length : (ocorrenciasList.length || 0); // fallback para o total da busca
             
-            let pesoEstatisticoGlobal = "0,000";
-            if (mediaRotasGlobal > 0) {
-                pesoEstatisticoGlobal = ((1 / mediaRotasGlobal) * 100).toFixed(3).replace('.', ',');
+            let meta = 100;
+            if (totalRotasMes > 0) meta = ((totalRotasMes - ocorrenciasMesCount) / totalRotasMes) * 100;
+            
+            let nivel = 'Limite Crítico (Plano de Ação)';
+            if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
+            else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
+
+            const mTolerancia = Math.round(totalRotasMes * 0.03);
+            const mMeta = Math.round(totalRotasMes * 0.01);
+            const mPadraoMin = Math.round(totalRotasMes * 0.02);
+            const mCritico = Math.round(totalRotasMes * 0.05);
+
+            let mPeso = "0,000";
+            if (totalRotasMes > 0) {
+                mPeso = ((1 / totalRotasMes) * 100).toFixed(3).replace('.', ',');
             }
 
-            if (!isMensal) {
-                const content = fs.readFileSync(templatePath, 'binary');
-                const zip = new PizZip(content);
-                const doc = new Docxtemplater(zip, { modules: [getImageModule()], paragraphLoop: true, linebreaks: true });
-                doc.render({ 
-                    logo: "placeholder",
-                    nome_cliente: nome_cliente,
-                    titulo: mes, 
-                    meses: mesesData,
-                    rotas: mediaRotasGlobal,
-                    media_rotas: mediaRotasGlobal,
-                    total_rotas: totalRotasGlobal,
-                    ocorrencias: totalOcorrenciasGlobal,
-                    tolerancia_ocorrencias: toleranciaOcorrenciasGlobal,
-                    meta_ocorrencias: metaOcorrenciasGlobal,
-                    padrao_minimo: padraoMinimoGlobal,
-                    critico_ocorrencias: criticoOcorrenciasGlobal,
-                    peso_estatistico: pesoEstatisticoGlobal
-                });
-                const buf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-                res.setHeader('Content-Disposition', 'attachment; filename="SLA_Consolidado.docx"');
-                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-                return res.send(buf);
-            } else {
-                const exportZip = new PizZip();
-                let singleBuf = null;
-                for (const mData of mesesData) {
-                    const content = fs.readFileSync(templatePath, 'binary');
-                    const zip = new PizZip(content);
-                    const doc = new Docxtemplater(zip, { modules: [getImageModule()], paragraphLoop: true, linebreaks: true });
-                    const ocorrenciasMes = agrupado[mData.mes] || [];
-                    
-                    const mRotas = mData.rotas;
-                    const mTolerancia = Math.round(mRotas * 0.03);
-                    const mMeta = Math.round(mRotas * 0.01);
-                    const mPadraoMin = Math.round(mRotas * 0.02);
-                    const mCritico = Math.round(mRotas * 0.05);
+            const docData = {
+                logo: "placeholder",
+                nome_cliente: nome_cliente,
+                titulo: isMensal ? periodo : `Consolidado ${periodo}`,
+                mes: periodo,
+                total_rotas: totalRotasMes,
+                media_rotas: totalRotasMes,
+                rotas: totalRotasMes,
+                ocorrencias: ocorrenciasMesCount,
+                meta: meta.toFixed(2).replace('.', ',') + '%',
+                nivel: nivel,
+                tolerancia_ocorrencias: mTolerancia,
+                meta_ocorrencias: mMeta,
+                padrao_minimo: mPadraoMin,
+                critico_ocorrencias: mCritico,
+                peso_estatistico: mPeso,
+                lista_ocorrencias: ocorrenciasList,
+                meses: [{
+                    mes: periodo,
+                    rotas: totalRotasMes,
+                    ocorrencias: ocorrenciasMesCount,
+                    meta: meta.toFixed(2).replace('.', ','),
+                    nivel: nivel
+                }]
+            };
 
-                    let mPeso = "0,000";
-                    if (mRotas > 0) {
-                        mPeso = ((1 / mRotas) * 100).toFixed(3).replace('.', ',');
-                    }
+            const content = fs.readFileSync(templatePath, 'binary');
+            const zip = new PizZip(content);
+            const doc = new Docxtemplater(zip, { modules: [getImageModule()], paragraphLoop: true, linebreaks: true });
+            
+            doc.render(docData);
+            
+            const buf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+            lastBuf = buf;
+            generatedFilesCount++;
+            
+            const safeCliente = nome_cliente.replace(/[^a-zA-Z0-9]/g, '_');
+            const safeMonth = periodo.replace(/\//g, '-');
+            exportZip.file(`SLA_${safeCliente}_${safeMonth}.docx`, buf);
+        }
 
-                    doc.render({
-                        logo: "placeholder",
-                        nome_cliente: nome_cliente,
-                        mes: mData.mes,
-                        total_rotas: mRotas,
-                        ocorrencias: mData.ocorrencias,
-                        meta: mData.meta + '%',
-                        nivel: mData.nivel,
-                        lista_ocorrencias: ocorrenciasMes,
-                        rotas: mRotas,
-                        media_rotas: mRotas,
-                        tolerancia_ocorrencias: mTolerancia,
-                        meta_ocorrencias: mMeta,
-                        padrao_minimo: mPadraoMin,
-                        critico_ocorrencias: mCritico,
-                        peso_estatistico: mPeso
-                    });
-                    singleBuf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-                    const safeMonth = mData.mes.replace(/\//g, '-');
-                    exportZip.file(`SLA_${safeMonth}.docx`, singleBuf);
-                }
-
-                if (mesesData.length === 1 && singleBuf) {
-                    res.setHeader('Content-Disposition', 'attachment; filename="SLA_Mensal.docx"');
-                    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-                    return res.send(singleBuf);
-                } else {
-                    const finalZipBuf = exportZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
-                    res.setHeader('Content-Disposition', 'attachment; filename="SLAs_Mensais.zip"');
-                    res.setHeader('Content-Type', 'application/zip');
-                    return res.send(finalZipBuf);
-                }
-            }
+        if (generatedFilesCount === 1) {
+            res.setHeader('Content-Disposition', 'attachment; filename="SLA_Gerado.docx"');
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            return res.send(lastBuf);
+        } else {
+            const finalZipBuf = exportZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+            res.setHeader('Content-Disposition', 'attachment; filename="SLAs_Lote.zip"');
+            res.setHeader('Content-Type', 'application/zip');
+            return res.send(finalZipBuf);
+        }
 
     } catch (error) {
         console.error('Erro ao gerar o documento:', error);

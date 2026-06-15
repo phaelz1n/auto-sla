@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto SLA - Gerador de Relatórios</title>
+    <title>Auto SLA - Painel de Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .hidden-tab { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -24,241 +26,170 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 py-8">
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="p-8">
-                <form id="slaForm" enctype="multipart/form-data">
-                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 border-b pb-4 gap-4">
-                        <h2 class="text-2xl font-bold text-gray-900">Gerar Novo SLA Operacional</h2>
-                        <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center w-full md:w-auto submit-btn">
-                            Gerar e Baixar SLA
-                        </button>
-                    </div>
-                    
-                    <!-- Secao 1: Dados Basicos -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden min-h-[500px]">
+            
+            <!-- Tabs -->
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex" aria-label="Tabs">
+                    <button id="tab-lancamento-btn" onclick="switchTab('lancamento')" class="w-1/2 border-blue-500 text-blue-600 py-4 px-1 text-center border-b-2 font-bold text-sm bg-blue-50/50 hover:bg-blue-50 transition-colors">
+                        Lançar Ocorrências
+                    </button>
+                    <button id="tab-relatorios-btn" onclick="switchTab('relatorios')" class="w-1/2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-center border-b-2 font-bold text-sm hover:bg-gray-50 transition-colors">
+                        Gerar Relatórios SLA
+                    </button>
+                </nav>
+            </div>
+
+            <div class="p-6 sm:p-8">
+
+                <!-- ================= ABA 1: LANÇAR OCORRÊNCIAS ================= -->
+                <div id="tab-lancamento" class="block">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Logo do Cliente</label>
-                            <input type="file" id="logo" name="logo" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition duration-150 ease-in-out cursor-pointer border border-gray-300 rounded-md">
-                            <p class="mt-1 text-xs text-gray-500">Selecione a imagem que substituirá a tag {%logo} no Word.</p>
+                            <h2 class="text-xl font-bold text-gray-900">Caixa de Entrada de Ocorrências</h2>
+                            <p class="text-sm text-gray-500 mt-1">Insira as ocorrências, revise a qual cliente pertencem e salve no banco.</p>
                         </div>
-                        
-                        <div class="relative">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente</label>
-                            <input type="text" id="nome_cliente" name="nome_cliente" list="clientesList" autocomplete="off" placeholder="Ex: Perto, Ambev" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <datalist id="clientesList"></datalist>
-                            <span id="loadStatus" class="absolute right-3 top-[38px] text-xs text-gray-400"></span>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Título do Relatório</label>
-                            <input type="text" id="mes" name="mes" placeholder="Ex: Consolidado 2026" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Exportação</label>
-                            <div class="flex items-center space-x-4 p-3 bg-white border border-gray-200 rounded-md">
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="tipo_exportacao" value="geral" checked class="form-radio text-blue-600 focus:ring-blue-500">
-                                    <span class="ml-2 text-sm text-gray-700">SLA Consolidado (Todos os meses num só arquivo)</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="tipo_exportacao" value="mensal" class="form-radio text-blue-600 focus:ring-blue-500">
-                                    <span class="ml-2 text-sm text-gray-700">SLA Separado (Um arquivo para cada mês)</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="block text-sm font-medium text-gray-700">Total de Rotas por Mês</label>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-sm text-gray-600">Total Ocorrências:</span>
-                                    <input type="number" id="ocorrencias" name="ocorrencias" required readonly class="w-16 px-2 py-1 bg-gray-100 border border-gray-300 rounded text-center text-sm font-bold text-gray-700 cursor-not-allowed">
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <!-- Botão OCR -->
+                            <div class="relative w-full sm:w-auto">
+                                <input type="file" id="ocrInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleOcrUpload(event)">
+                                <div class="px-4 py-2 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 font-medium text-sm transition-colors border border-purple-200 flex items-center justify-center gap-2 h-full cursor-pointer shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                                    </svg>
+                                    <span id="ocrBtnText">Ler de um Print</span>
                                 </div>
                             </div>
-                            <div id="rotasContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
-                                <p class="text-xs text-gray-500 col-span-full">Adicione ocorrências abaixo para que os meses apareçam aqui automaticamente.</p>
-                            </div>
+                            <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200 whitespace-nowrap shadow-sm">
+                                + Digitar Manual
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Secao 2: Lista de Ocorrencias -->
-                    <div class="mb-8">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">Detalhamento de Ocorrências</h3>
-                            <div class="space-x-2 flex items-center">
-                                <span class="text-xs text-gray-500 mr-2 hidden md:inline">Dica: Aperte Ctrl+V para colar um Print</span>
-                                <input type="file" id="fileImport" accept="image/*" multiple class="hidden" onchange="handleFileUpload(event)">
-                                <button type="button" id="importBtn" onclick="document.getElementById('fileImport').click()" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 font-medium text-sm transition-colors border border-blue-200">
-                                    📷 Importar Imagem
-                                </button>
-                                <button type="button" onclick="addOcorrencia()" class="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 font-medium text-sm transition-colors border border-green-200">
-                                    + Adicionar Ocorrência
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div id="ocorrenciasList" class="space-y-4">
-                            <!-- Items serão injetados aqui -->
-                        </div>
-                        <div id="emptyState" class="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm">
-                            Nenhuma ocorrência registrada. O total será 0.
-                        </div>
+                    <div id="ocorrenciasList" class="space-y-4 mb-6">
+                        <!-- Items serão injetados aqui -->
+                    </div>
+                    <div id="emptyState" class="text-center py-10 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm">
+                        Sua caixa de entrada está vazia.<br>Use os botões acima para lançar ocorrências.
                     </div>
 
-                    <!-- Hidden Input para enviar as ocorrências -->
-                    <input type="hidden" id="detalhes_ocorrencias" name="detalhes_ocorrencias">
-
-                    <!-- Submit -->
                     <div class="pt-6 border-t flex justify-end">
-                        <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px] submit-btn">
-                            Gerar e Baixar SLA
+                        <button type="button" onclick="salvarNoBanco()" id="salvarBtn" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px]">
+                            Salvar no Banco
                         </button>
                     </div>
-                </form>
+                </div>
+
+                <!-- ================= ABA 2: GERAR SLAs ================= -->
+                <div id="tab-relatorios" class="hidden-tab">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Geração de Relatórios</h2>
+                    
+                    <form id="buscaPeriodoForm" onsubmit="buscarClientes(event)" class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row items-end gap-4">
+                        <div class="flex-1 w-full">
+                            <label class="block text-sm font-semibold text-blue-900 mb-1">Período (Mês e Ano)</label>
+                            <input type="text" id="busca_periodo" placeholder="Ex: 05/2026" required class="w-full px-4 py-2 border border-blue-200 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button type="submit" id="btnBuscar" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-sm transition-all">
+                            Buscar Clientes
+                        </button>
+                    </form>
+
+                    <div id="resultadoBusca" class="hidden">
+                        <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Clientes encontrados com ocorrências:</h3>
+                        
+                        <form id="gerarSlaForm" onsubmit="gerarSLA(event)">
+                            <div id="listaClientesPeriodo" class="space-y-3 mb-6">
+                                <!-- Lista injetada via JS -->
+                            </div>
+
+                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Logo Global</label>
+                                    <input type="file" id="logo" name="logo" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md cursor-pointer">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Exportação</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="tipo_exportacao" value="geral" checked class="form-radio text-blue-600">
+                                            <span class="ml-2 text-sm text-gray-700">Consolidado</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="tipo_exportacao" value="mensal" class="form-radio text-blue-600">
+                                            <span class="ml-2 text-sm text-gray-700">Mensal (1 arquivo/mês)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" id="gerarBtn" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px]">
+                                    Gerar SLAs Selecionados
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="buscaVazia" class="hidden text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+                        Nenhum cliente encontrado com ocorrências neste período.
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
 
     <script>
         let ocorrenciasData = [];
-        let rotasPorMesCache = {};
-        let clientesData = [];
-        let ultimoJsonSalvo = "";
-        let isFetchingClient = false;
+        let clientesList = [];
 
-        async function handleFileUpload(event) {
-            const files = Array.from(event.target.files);
-            if (files.length > 0) {
-                const btn = document.getElementById('importBtn');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-
-                for (let i = 0; i < files.length; i++) {
-                    btn.innerHTML = `🔍 Lendo Imagem (OCR) ${i + 1}/${files.length}...`;
-                    const success = await processImageOCR(files[i]);
-                    if (!success) {
-                        break; // Se deu erro fatal (ex: rate limit), para a importação.
-                    }
-                }
-
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-            event.target.value = '';
-        }
-
-        async function processImage(file) {
-            const btn = document.getElementById('importBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '🔍 Lendo Imagem (OCR)...';
-            btn.disabled = true;
-
-            await processImageOCR(file);
-
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-
-        async function processImageOCR(file) {
-            const formData = new FormData();
-            formData.append('image', file);
-
-            try {
-                const response = await fetch('/api/process-image', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    let errMessage = "Erro ao analisar imagem pelo OCR.";
-                    try {
-                        const errJson = await response.json();
-                        if (errJson.error) errMessage = errJson.error;
-                    } catch(e) {
-                        const errText = await response.text();
-                        console.error("Server Error:", errText);
-                    }
-                    alert(errMessage);
-                    return false;
-                }
-
-                const data = await response.json();
-                
-                const id = Date.now();
-                ocorrenciasData.push({ 
-                    id, 
-                    numero: '', 
-                    data: data.data || '', 
-                    descricao: data.descricao || '', 
-                    status: data.status || '' 
-                });
-                sortOcorrencias();
-                renderOcorrencias();
-                updateTotal();
-                return true;
-                
-            } catch (error) {
-                console.error(error);
-                alert("Falha ao processar a imagem via OCR.");
-                return false;
-            }
-        }
-
-        window.addEventListener('paste', async (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                return;
-            }
-
-            const items = e.clipboardData.items;
-            const imageFiles = [];
-            
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    imageFiles.push(items[i].getAsFile());
-                }
-            }
-
-            if (imageFiles.length > 0) {
-                const btn = document.getElementById('importBtn');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-
-                for (let i = 0; i < imageFiles.length; i++) {
-                    btn.innerHTML = `🔍 Lendo Imagem (OCR) ${i + 1}/${imageFiles.length}...`;
-                    const success = await processImageOCR(imageFiles[i]);
-                    if (!success) {
-                        break;
-                    }
-                }
-
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            } else {
-                const text = e.clipboardData.getData('text');
-                if (text && text.length > 10) {
-                    // Texto colado ignorado, não usamos OCR para texto puro aqui.
-                }
-            }
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchClientes();
+            renderOcorrencias();
         });
 
-        // parseRawText removido, usando OCR agora.
+        // Alternar Abas
+        function switchTab(tabId) {
+            document.getElementById('tab-lancamento').classList.add('hidden-tab');
+            document.getElementById('tab-relatorios').classList.add('hidden-tab');
+            
+            document.getElementById('tab-lancamento-btn').classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50/50');
+            document.getElementById('tab-lancamento-btn').classList.add('border-transparent', 'text-gray-500');
+            document.getElementById('tab-relatorios-btn').classList.remove('border-blue-500', 'text-blue-600', 'bg-blue-50/50');
+            document.getElementById('tab-relatorios-btn').classList.add('border-transparent', 'text-gray-500');
 
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden-tab');
+            document.getElementById(`tab-${tabId}-btn`).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById(`tab-${tabId}-btn`).classList.add('border-blue-500', 'text-blue-600', 'bg-blue-50/50');
+        }
+
+        // --- FETCH DE CLIENTES ---
+        async function fetchClientes() {
+            try {
+                const res = await fetch('/api/clientes');
+                const data = await res.json();
+                if (res.ok) {
+                    clientesList = data || [];
+                }
+            } catch (e) {
+                console.error("Erro ao buscar clientes:", e);
+            }
+        }
+
+        // --- ABA 1: CAIXA DE ENTRADA ---
         function sortOcorrencias() {
             ocorrenciasData.sort((a, b) => {
                 const parseDate = (str) => {
                     if (!str) return 0;
                     const parts = str.split('/');
-                    if (parts.length === 3) {
-                        return parseInt(parts[2] + parts[1] + parts[0], 10);
-                    }
+                    if (parts.length === 3) return parseInt(parts[2] + parts[1] + parts[0], 10);
                     return 0; 
                 };
                 return parseDate(a.data) - parseDate(b.data);
             });
-
-            // Atualiza os números para ficarem sequenciais após a ordenação
             ocorrenciasData.forEach((oc, index) => {
                 oc.numero = (index + 1).toString();
             });
@@ -266,83 +197,31 @@
 
         function addOcorrencia() {
             const id = Date.now();
-            ocorrenciasData.push({ id, numero: '', data: '', descricao: '', status: '' });
+            ocorrenciasData.push({ id, numero: '', data: '', descricao: '', status: '', cliente_id: '' });
             sortOcorrencias();
             renderOcorrencias();
-            updateTotal();
         }
 
         function removeOcorrencia(id) {
             ocorrenciasData = ocorrenciasData.filter(o => o.id !== id);
             sortOcorrencias();
             renderOcorrencias();
-            updateTotal();
         }
 
         function updateOcorrencia(id, field, value) {
             const index = ocorrenciasData.findIndex(o => o.id === id);
             if (index !== -1) {
                 ocorrenciasData[index][field] = value;
-                if (field === 'data') {
-                    sortOcorrencias();
-                    renderOcorrencias();
-                }
+                if (field === 'data') sortOcorrencias();
+                if (field === 'cliente_id' || field === 'data') renderOcorrencias();
             }
-        }
-
-        function updateRotasUI() {
-            const container = document.getElementById('rotasContainer');
-            const ocorrenciasInput = document.getElementById('ocorrencias');
-            
-            const mesesSet = new Set();
-            ocorrenciasData.forEach(oc => {
-                if (oc.data) {
-                    const match = oc.data.match(/(\d{1,2})[\/\-](\d{4})/);
-                    if (match) {
-                        const mStr = match[1].padStart(2, '0') + '/' + match[2];
-                        mesesSet.add(mStr);
-                    }
-                }
-            });
-
-            const mesesUnicos = Array.from(mesesSet).sort((a, b) => {
-                const [m1, y1] = a.split('/');
-                const [m2, y2] = b.split('/');
-                return parseInt(y1+m1) - parseInt(y2+m2);
-            });
-
-            if (mesesUnicos.length === 0) {
-                container.innerHTML = '<p class="text-xs text-gray-500 col-span-full">Adicione ocorrências com data (Ex: DD/MM/AAAA) para gerar os campos de rotas.</p>';
-                if(ocorrenciasInput) ocorrenciasInput.value = ocorrenciasData.length || 0;
-                return;
-            }
-
-            container.innerHTML = '';
-            mesesUnicos.forEach(m => {
-                const val = rotasPorMesCache[m] || '';
-                container.innerHTML += `
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">${m}</label>
-                        <input type="number" name="rotas_${m}" value="${val}" onchange="rotasPorMesCache['${m}'] = this.value" placeholder="Total Rotas" required class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 text-sm font-medium">
-                    </div>
-                `;
-            });
-            
-            if(ocorrenciasInput) ocorrenciasInput.value = ocorrenciasData.length;
-        }
-
-        function updateTotal() {
-            updateRotasUI();
         }
 
         function renderOcorrencias() {
             const list = document.getElementById('ocorrenciasList');
             const emptyState = document.getElementById('emptyState');
             
-            // Remover as margens entre os cards antigos, se houver
-            list.className = "mt-4";
             list.innerHTML = '';
-            
             if (ocorrenciasData.length === 0) {
                 emptyState.style.display = 'block';
                 return;
@@ -350,79 +229,319 @@
                 emptyState.style.display = 'none';
             }
 
-            const tableHtml = `
-                <div class="overflow-x-auto shadow-sm ring-1 ring-black ring-opacity-5 rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-300">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="py-3 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 w-16">Nº</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900 w-32">Data</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900">Descrição</th>
-                                <th scope="col" class="px-3 py-3 text-left text-xs font-semibold text-gray-900">Status / Resolução</th>
-                                <th scope="col" class="py-3 pl-3 pr-4 text-center text-xs font-semibold text-gray-900 w-16">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
-                            ${ocorrenciasData.map(oc => `
-                                <tr>
-                                    <td class="whitespace-nowrap py-2 pl-4 pr-3 align-top">
-                                        <input type="text" value="${oc.numero}" onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-center focus:ring-blue-500 focus:border-blue-500 bg-gray-50">
-                                    </td>
-                                    <td class="whitespace-nowrap px-3 py-2 align-top">
-                                        <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="DD/MM/AAAA" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
-                                    </td>
-                                    <td class="px-3 py-2 align-top">
-                                        <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 resize-y">${oc.descricao}</textarea>
-                                    </td>
-                                    <td class="px-3 py-2 align-top">
-                                        <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 resize-y">${oc.status}</textarea>
-                                    </td>
-                                    <td class="whitespace-nowrap py-2 pl-3 pr-4 text-center align-top">
-                                        <button type="button" onclick="removeOcorrencia(${oc.id})" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md p-1.5 inline-flex items-center justify-center font-bold transition-colors" title="Remover">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            list.innerHTML = tableHtml;
-        }
-
-        document.getElementById('slaForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Preparar a lista (remover o id que usamos apenas no frontend)
-            const cleanList = ocorrenciasData.map(({ id, ...rest }) => rest);
-            document.getElementById('detalhes_ocorrencias').value = JSON.stringify(cleanList);
-            
-            const submitBtns = document.querySelectorAll('.submit-btn');
-            const originalTexts = [];
-            submitBtns.forEach(btn => {
-                originalTexts.push(btn.innerHTML);
-                btn.innerHTML = 'Gerando...';
-                btn.disabled = true;
-                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            let clientesOptions = '<option value="">-- Selecione o Cliente --</option>';
+            clientesList.forEach(c => {
+                clientesOptions += `<option value="${c.id}">${c.nome}</option>`;
             });
 
-            const formData = new FormData(document.getElementById('slaForm'));
+            ocorrenciasData.forEach((oc) => {
+                const row = document.createElement('div');
+                row.className = `p-4 rounded-lg border relative ${!oc.cliente_id ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 shadow-sm'}`;
+                
+                // Pré-selecionar cliente correto no HTML injetado
+                const selectHtml = clientesOptions.replace(`value="${oc.cliente_id}"`, `value="${oc.cliente_id}" selected`);
 
-            // Garante que o rádio selecionado está no formData
-            const exportType = document.querySelector('input[name="tipo_exportacao"]:checked').value;
-            formData.set('tipo_exportacao', exportType);
+                row.innerHTML = `
+                    <button type="button" onclick="removeOcorrencia(${oc.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 rounded-full w-6 h-6 flex items-center justify-center font-bold transition-colors">×</button>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                        
+                        <div class="sm:col-span-12 md:col-span-5">
+                            <label class="block text-xs font-bold ${!oc.cliente_id ? 'text-red-600' : 'text-blue-600'} mb-1">Empresa / Cliente *</label>
+                            <select onchange="updateOcorrencia(${oc.id}, 'cliente_id', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                ${selectHtml}
+                            </select>
+                        </div>
+                        
+                        <div class="sm:col-span-4 md:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Nº</label>
+                            <input type="text" value="${oc.numero}" onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div class="sm:col-span-8 md:col-span-5">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Data</label>
+                            <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="Ex: 19/05/2026" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div class="sm:col-span-12 md:col-span-6">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Descrição</label>
+                            <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.descricao}</textarea>
+                        </div>
+
+                        <div class="sm:col-span-12 md:col-span-6">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Status / Resolução</label>
+                            <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.status}</textarea>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        async function handleOcrUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const btnText = document.getElementById('ocrBtnText');
+            const originalText = 'Ler de um Print';
+            btnText.innerText = 'Lendo... 0%';
 
             try {
-                const response = await fetch('/generate', {
+                const result = await Tesseract.recognize(file, 'por', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            btnText.innerText = `Lendo... ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                });
+                
+                const text = result.data.text;
+                const extract = (regex) => {
+                    const match = text.match(regex);
+                    return match ? match[1].trim() : '';
+                };
+
+                const dataStr = extract(/Data:\s*(.+)/i);
+                const empresa = extract(/Empresa:\s*(.+)/i);
+                const rota = extract(/Rota:\s*(.+)/i);
+                const motorista = extract(/Motorista:\s*(.+)/i);
+                const impacto = extract(/Impacto:\s*(.+)/i);
+                const tempoSocorro = extract(/Tempo de socorro:\s*(.+)/i);
+                const responsavel = extract(/Operacional responsável:\s*(.+)/i);
+                
+                const detalheMatch = text.match(/Detalhe do ocorrido:\s*([\s\S]*?)(?:Operacional responsável:|$)/i);
+                const detalhe = detalheMatch ? detalheMatch[1].trim() : '';
+
+                let descParts = [];
+                if (empresa) descParts.push(`Empresa: ${empresa}`);
+                if (rota) descParts.push(`(Rota: ${rota})`);
+                if (motorista) descParts.push(`- Motorista: ${motorista}`);
+                const cabecalhoDesc = descParts.join(' ');
+                const descricaoCompleta = cabecalhoDesc ? `${cabecalhoDesc}.\nDetalhe: ${detalhe}` : detalhe;
+
+                let statusParts = [];
+                if (impacto) statusParts.push(`Impacto: ${impacto}`);
+                if (tempoSocorro) statusParts.push(`Tempo socorro: ${tempoSocorro}`);
+                if (responsavel) statusParts.push(`(Resp: ${responsavel})`);
+                const statusCompleto = statusParts.join(' - ');
+
+                // Identificar o cliente automaticamente
+                let matchedClientId = '';
+                if (empresa) {
+                    const empresaUpper = empresa.toUpperCase();
+                    const found = clientesList.find(c => empresaUpper.includes(c.nome.toUpperCase()) || c.nome.toUpperCase().includes(empresaUpper));
+                    if (found) matchedClientId = found.id;
+                }
+
+                const id = Date.now();
+                ocorrenciasData.push({
+                    id,
+                    cliente_id: matchedClientId,
+                    numero: '',
+                    data: dataStr || '',
+                    descricao: descricaoCompleta.trim(),
+                    status: statusCompleto.trim()
+                });
+
+                sortOcorrencias();
+                renderOcorrencias();
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao processar a imagem. Tente novamente.');
+            } finally {
+                btnText.innerText = originalText;
+                event.target.value = '';
+            }
+        }
+
+        window.addEventListener('paste', async (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                return;
+            }
+            if (document.getElementById('tab-lancamento').classList.contains('hidden-tab')) return;
+
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    // Simular upload
+                    const fileList = new DataTransfer();
+                    fileList.items.add(blob);
+                    handleOcrUpload({ target: { files: fileList.files } });
+                    break;
+                }
+            }
+        });
+
+        async function salvarNoBanco() {
+            if (ocorrenciasData.length === 0) return;
+
+            const hasInvalid = ocorrenciasData.some(o => !o.cliente_id);
+            if (hasInvalid) {
+                alert("⚠️ Atenção: Há ocorrências sem cliente associado. Por favor, selecione um cliente em todas as caixas (destacadas em vermelho).");
+                return;
+            }
+
+            const btn = document.getElementById('salvarBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Salvando...';
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            const payload = ocorrenciasData.map(o => ({
+                cliente_id: o.cliente_id,
+                numero_original: o.numero,
+                data: o.data,
+                descricao: o.descricao,
+                status: o.status
+            }));
+
+            try {
+                const res = await fetch('/api/ocorrencias/lote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ocorrencias: payload })
+                });
+
+                if (res.ok) {
+                    ocorrenciasData = []; // Limpa a caixa de entrada
+                    renderOcorrencias();
+                    alert("✅ Ocorrências salvas no banco com sucesso!");
+                } else {
+                    const err = await res.json();
+                    alert("Erro ao salvar: " + err.error);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Erro de conexão com o servidor.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        // --- ABA 2: GERAR RELATÓRIOS ---
+        async function buscarClientes(e) {
+            e.preventDefault();
+            const periodo = document.getElementById('busca_periodo').value.trim();
+            if (!periodo) return;
+
+            const btn = document.getElementById('btnBuscar');
+            btn.disabled = true;
+            btn.innerHTML = 'Buscando...';
+
+            try {
+                const res = await fetch(`/api/clientes-com-ocorrencias?periodo=${encodeURIComponent(periodo)}`);
+                const data = await res.json();
+
+                if (res.ok) {
+                    renderClientesPeriodo(data);
+                } else {
+                    alert("Erro ao buscar: " + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erro de conexão.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Buscar Clientes';
+            }
+        }
+
+        function renderClientesPeriodo(clientesEncontrados) {
+            const container = document.getElementById('listaClientesPeriodo');
+            const divResultado = document.getElementById('resultadoBusca');
+            const divVazia = document.getElementById('buscaVazia');
+
+            if (!clientesEncontrados || clientesEncontrados.length === 0) {
+                divResultado.classList.add('hidden');
+                divVazia.classList.remove('hidden');
+                return;
+            }
+
+            divVazia.classList.add('hidden');
+            divResultado.classList.remove('hidden');
+            container.innerHTML = '';
+
+            // Botão "Selecionar Todos"
+            container.innerHTML = `
+                <div class="flex items-center px-4 py-2 bg-gray-100 rounded-md border border-gray-200">
+                    <input type="checkbox" id="checkAll" onchange="toggleAll(this)" class="w-4 h-4 text-blue-600 rounded" checked>
+                    <label for="checkAll" class="ml-3 text-sm font-bold text-gray-700">Selecionar Todos</label>
+                </div>
+            `;
+
+            clientesEncontrados.forEach(c => {
+                container.innerHTML += `
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-white border border-gray-200 rounded-md hover:border-blue-300 transition-colors gap-3">
+                        <div class="flex items-center flex-1">
+                            <input type="checkbox" name="cliente_selecionado" value="${c.id}" class="w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
+                            <label class="ml-3 cursor-pointer select-none">
+                                <span class="font-bold text-gray-800">${c.nome}</span>
+                                <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">${c.ocorrencias_count} ocorrências</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center sm:w-1/3">
+                            <label class="text-xs text-gray-500 mr-2 whitespace-nowrap">Meta de Rotas:</label>
+                            <input type="number" name="rotas_${c.id}" placeholder="Ex: 50" required class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleAll(source) {
+            const checkboxes = document.getElementsByName('cliente_selecionado');
+            for (let i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+
+        async function gerarSLA(e) {
+            e.preventDefault();
+
+            const checkboxes = document.querySelectorAll('input[name="cliente_selecionado"]:checked');
+            if (checkboxes.length === 0) {
+                alert("Selecione pelo menos um cliente para gerar o SLA.");
+                return;
+            }
+
+            const clientesList = [];
+            const rotasMap = {};
+
+            checkboxes.forEach(cb => {
+                clientesList.push(cb.value);
+                const rotasInput = document.querySelector(`input[name="rotas_${cb.value}"]`);
+                rotasMap[cb.value] = rotasInput ? parseInt(rotasInput.value) : 0;
+            });
+
+            const periodo = document.getElementById('busca_periodo').value.trim();
+            const exportType = document.querySelector('input[name="tipo_exportacao"]:checked').value;
+            const logoInput = document.getElementById('logo');
+
+            const formData = new FormData();
+            formData.append('periodo', periodo);
+            formData.append('clientes', JSON.stringify(clientesList));
+            formData.append('rotas', JSON.stringify(rotasMap));
+            formData.append('tipo_exportacao', exportType);
+            if (logoInput.files[0]) {
+                formData.append('logo', logoInput.files[0]);
+            }
+
+            const btn = document.getElementById('gerarBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Gerando...';
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+            try {
+                const response = await fetch('/api/gerar-sla-novo', {
                     method: 'POST',
                     body: formData
                 });
 
                 if (response.ok) {
-                    // Download the file
-                    // Pega o nome do arquivo a partir dos headers (pode ser .docx ou .zip)
-                    let filename = 'sla_gerado.docx';
+                    let filename = 'SLA_Gerado.docx';
                     const disposition = response.headers.get('content-disposition');
                     if (disposition && disposition.indexOf('attachment') !== -1) {
                         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
@@ -449,102 +568,11 @@
                 console.error(error);
                 alert("Erro de conexão ao gerar SLA.");
             } finally {
-                submitBtns.forEach((btn, index) => {
-                    btn.innerHTML = originalTexts[index];
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                });
-            }
-        });
-
-        // Supabase / Persistência
-        async function loadClientes() {
-            try {
-                const res = await fetch('/api/clientes');
-                if (res.ok) {
-                    clientesData = await res.json();
-                    const datalist = document.getElementById('clientesList');
-                    datalist.innerHTML = '';
-                    clientesData.forEach(c => {
-                        const option = document.createElement('option');
-                        option.value = c.nome;
-                        datalist.appendChild(option);
-                    });
-                }
-            } catch (e) {
-                console.error("Erro ao carregar clientes", e);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
-
-        async function loadOcorrenciasDoCliente(clienteNome) {
-            if (!clienteNome) return;
-            const cliente = clientesData.find(c => c.nome.toLowerCase() === clienteNome.toLowerCase());
-            if (!cliente) return; // Novo cliente
-            
-            isFetchingClient = true;
-            document.getElementById('loadStatus').innerText = "Carregando...";
-            try {
-                const res = await fetch(`/api/ocorrencias/${cliente.id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    ocorrenciasData = data.map(oc => ({
-                        id: oc.id || Date.now() + Math.random(),
-                        numero: oc.numero_original,
-                        data: oc.data,
-                        descricao: oc.descricao,
-                        status: oc.status
-                    }));
-                    sortOcorrencias();
-                    renderOcorrencias();
-                    updateTotal();
-                    ultimoJsonSalvo = JSON.stringify(ocorrenciasData);
-                }
-            } catch(e) {
-                console.error("Erro ao carregar ocorrências", e);
-            } finally {
-                document.getElementById('loadStatus').innerText = "";
-                isFetchingClient = false;
-            }
-        }
-
-        document.getElementById('nome_cliente').addEventListener('change', (e) => {
-            loadOcorrenciasDoCliente(e.target.value.trim());
-        });
-
-        async function autoSave() {
-            if (isFetchingClient) return; // Não salvar enquanto estiver carregando outro cliente
-            
-            const clienteNome = document.getElementById('nome_cliente').value.trim();
-            if (!clienteNome) return;
-
-            const jsonAtual = JSON.stringify(ocorrenciasData);
-            if (jsonAtual === ultimoJsonSalvo) return; // Nada mudou
-
-            const payload = {
-                cliente_nome: clienteNome,
-                ocorrencias: ocorrenciasData
-            };
-
-            try {
-                const res = await fetch('/api/salvar-dados', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    ultimoJsonSalvo = jsonAtual;
-                    loadClientes(); // Atualiza a lista de clientes (se for um novo)
-                }
-            } catch (e) {
-                console.error("Auto-save falhou", e);
-            }
-        }
-
-        setInterval(autoSave, 15000); // Tenta salvar a cada 15 segundos silenciosamente
-
-        // Init
-        updateTotal();
-        loadClientes();
     </script>
 </body>
 </html>
