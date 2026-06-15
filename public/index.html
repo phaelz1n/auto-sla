@@ -327,12 +327,30 @@
                     if (responsavel) statusParts.push(`(Resp: ${responsavel})`);
                     const statusCompleto = statusParts.join(' - ');
 
-                    // Identificar o cliente automaticamente
+                    // Identificar o cliente automaticamente com lógica mais robusta
                     let matchedClientId = '';
+                    const normalizeStr = (s) => s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+                    
                     if (empresa) {
-                        const empresaUpper = empresa.toUpperCase();
-                        const found = clientesList.find(c => empresaUpper.includes(c.nome.toUpperCase()) || c.nome.toUpperCase().includes(empresaUpper));
+                        const empresaNorm = normalizeStr(empresa);
+                        const found = clientesList.find(c => {
+                            const cNomeNorm = normalizeStr(c.nome);
+                            return empresaNorm.includes(cNomeNorm) || cNomeNorm.includes(empresaNorm);
+                        });
                         if (found) matchedClientId = found.id;
+                    }
+                    
+                    // Fallback: se não achou pela variável "Empresa:", procura o nome do cliente no texto inteiro do print
+                    if (!matchedClientId) {
+                        const fullTextNorm = normalizeStr(text);
+                        // Filtra para evitar falsos positivos com nomes muito curtos
+                        const foundFallback = clientesList.find(c => {
+                            const cNomeNorm = normalizeStr(c.nome);
+                            return cNomeNorm.length > 3 && fullTextNorm.includes(cNomeNorm);
+                        });
+                        if (foundFallback) {
+                            matchedClientId = foundFallback.id;
+                        }
                     }
 
                     const id = Date.now() + i;
