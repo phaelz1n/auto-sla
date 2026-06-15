@@ -216,8 +216,6 @@
         });
 
         window.deletarOcorrencia = async (id) => {
-            if (!confirm("Tem certeza que deseja excluir esta ocorrência permanentemente?")) return;
-            
             try {
                 const res = await fetch(`/api/ocorrencias/${id}`, { method: 'DELETE' });
                 if (res.ok) {
