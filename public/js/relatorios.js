@@ -146,7 +146,6 @@ window.gerarSlaCliente = async function(e) {
 
     const periodo = (pIni === pFim) ? pIni : `${pIni}-${pFim}`;
     const exportType = document.getElementById('tipo_exportacao_gerar').value;
-    const logoInput = document.getElementById('logo_gerar');
     
     const metasInputs = document.querySelectorAll('.input-meta-rota');
     const metasMensais = {};
@@ -162,9 +161,6 @@ window.gerarSlaCliente = async function(e) {
     formData.append('clientes', JSON.stringify(clientesListPayload));
     formData.append('rotas', JSON.stringify(rotasMap));
     formData.append('tipo_exportacao', exportType);
-    if (logoInput.files[0]) {
-        formData.append('logo', logoInput.files[0]);
-    }
 
     const btn = document.getElementById('gerarBtn');
     const originalText = btn.innerHTML;

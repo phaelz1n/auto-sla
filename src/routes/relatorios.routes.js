@@ -1,16 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const { gerarSLA } = require('../services/slaGenerator');
 
-const upload = multer({ storage: multer.memoryStorage() });
-
-router.post('/gerar-sla-novo', upload.single('logo'), async (req, res) => {
+router.post('/gerar-sla-novo', async (req, res) => {
     try {
         const { periodo, clientes, rotas, tipo_exportacao } = req.body;
-        const logoBuffer = req.file ? req.file.buffer : null;
         
-        const result = await gerarSLA(periodo, clientes, rotas, tipo_exportacao, logoBuffer);
+        const result = await gerarSLA(periodo, clientes, rotas, tipo_exportacao);
         
         if (!result.isZip) {
             res.setHeader('Content-Disposition', 'attachment; filename="SLA_Gerado.docx"');

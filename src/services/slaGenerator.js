@@ -1,11 +1,10 @@
 const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
-const ImageModule = require('docxtemplater-image-module-free');
 const path = require('path');
 const fs = require('fs');
 const supabase = require('../config/supabase');
 
-async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao, logoBuffer) {
+async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
     if (!supabase) throw new Error("Supabase não configurado no .env");
     
     const clientesList = JSON.parse(clientes);
@@ -18,18 +17,6 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao, logoBuffer)
     if (!fs.existsSync(templatePath)) {
         throw new Error(`O arquivo ${templateFile} não foi encontrado na pasta raiz.`);
     }
-
-    const imageOptions = {
-        centered: false,
-        getImage: function(tagValue, tagName) {
-            if (tagName === 'logo' && logoBuffer) return logoBuffer;
-            return Buffer.from(''); 
-        },
-        getSize: function(img, tagValue, tagName) {
-            return [150, 50]; 
-        }
-    };
-    const getImageModule = () => new ImageModule(imageOptions);
 
     const exportZip = new PizZip();
     let generatedFilesCount = 0;
@@ -136,7 +123,6 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao, logoBuffer)
         }
 
         const docData = {
-            logo: "placeholder",
             nome_cliente: nome_cliente,
             titulo: isMensal ? periodo : `Consolidado ${tituloPeriodo}`,
             mes: tituloPeriodo,
@@ -157,7 +143,7 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao, logoBuffer)
 
         const content = fs.readFileSync(templatePath, 'binary');
         const zip = new PizZip(content);
-        const doc = new Docxtemplater(zip, { modules: [getImageModule()], paragraphLoop: true, linebreaks: true });
+        const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         
         doc.render(docData);
         
