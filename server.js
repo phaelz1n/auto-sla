@@ -23,7 +23,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Servir arquivos estáticos e parsear JSON
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/api/clientes', async (req, res) => {
