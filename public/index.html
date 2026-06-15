@@ -86,54 +86,55 @@
                 <div id="tab-relatorios" class="hidden-tab">
                     <h2 class="text-xl font-bold text-gray-900 mb-6">Geração de Relatórios</h2>
                     
-                    <form id="buscaPeriodoForm" onsubmit="buscarClientes(event)" class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row items-end gap-4">
+                    <div class="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row items-end gap-4">
                         <div class="flex-1 w-full">
-                            <label class="block text-sm font-semibold text-blue-900 mb-1">Período (Mês e Ano)</label>
-                            <input type="text" id="busca_periodo" placeholder="Ex: 05/2026" required class="w-full px-4 py-2 border border-blue-200 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-semibold text-blue-900 mb-1">Selecione o Cliente</label>
+                            <select id="select_cliente_relatorio" onchange="buscarOcorrenciasCliente(this.value)" class="w-full px-4 py-2 border border-blue-200 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <option value="">-- Selecione o Cliente --</option>
+                            </select>
                         </div>
-                        <button type="submit" id="btnBuscar" class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-sm transition-all">
-                            Buscar Clientes
-                        </button>
-                    </form>
+                    </div>
 
-                    <div id="resultadoBusca" class="hidden">
-                        <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Clientes encontrados com ocorrências:</h3>
+                    <div id="resultadoOcorrenciasCliente" class="hidden">
+                        <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Ocorrências Salvas do Cliente:</h3>
+                        <div id="listaOcorrenciasCliente" class="space-y-3 mb-8 max-h-64 overflow-y-auto bg-white p-3 border border-gray-200 rounded-md shadow-inner text-sm">
+                            <!-- Injetado via JS -->
+                        </div>
                         
-                        <form id="gerarSlaForm" onsubmit="gerarSLA(event)">
-                            <div id="listaClientesPeriodo" class="space-y-3 mb-6">
-                                <!-- Lista injetada via JS -->
-                            </div>
-
-                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form id="gerarSlaForm" onsubmit="gerarSlaCliente(event)">
+                            <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Opções para Gerar o Documento:</h3>
+                            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Logo Global</label>
-                                    <input type="file" id="logo" name="logo" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md cursor-pointer">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Período (Filtro)</label>
+                                    <input type="text" id="periodo_gerar" placeholder="Ex: 05/2026" required class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Exportação</label>
-                                    <div class="flex items-center space-x-4">
-                                        <label class="inline-flex items-center">
-                                            <input type="radio" name="tipo_exportacao" value="geral" checked class="form-radio text-blue-600">
-                                            <span class="ml-2 text-sm text-gray-700">Consolidado</span>
-                                        </label>
-                                        <label class="inline-flex items-center">
-                                            <input type="radio" name="tipo_exportacao" value="mensal" class="form-radio text-blue-600">
-                                            <span class="ml-2 text-sm text-gray-700">Mensal (1 arquivo/mês)</span>
-                                        </label>
-                                    </div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Total de Rotas</label>
+                                    <input type="number" id="meta_rotas_gerar" placeholder="Ex: 50" required class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Exportação</label>
+                                    <select id="tipo_exportacao_gerar" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                        <option value="geral">Consolidado</option>
+                                        <option value="mensal">Mensal</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Logo Global</label>
+                                    <input type="file" id="logo_gerar" name="logo" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
                                 </div>
                             </div>
 
                             <div class="flex justify-end">
                                 <button type="submit" id="gerarBtn" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px]">
-                                    Gerar SLAs Selecionados
+                                    Baixar SLA
                                 </button>
                             </div>
                         </form>
                     </div>
 
-                    <div id="buscaVazia" class="hidden text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
-                        Nenhum cliente encontrado com ocorrências neste período.
+                    <div id="buscaVazia" class="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+                        Selecione um cliente acima para visualizar o histórico de ocorrências.
                     </div>
                 </div>
 
@@ -173,6 +174,11 @@
                 const data = await res.json();
                 if (res.ok) {
                     clientesList = data || [];
+                    const selectRelatorio = document.getElementById('select_cliente_relatorio');
+                    if (selectRelatorio) {
+                        selectRelatorio.innerHTML = '<option value="">-- Selecione o Cliente --</option>' + 
+                            clientesList.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+                    }
                 } else {
                     alert("⚠️ Erro de Servidor: Não foi possível carregar a lista de clientes. (" + (data.error || "Erro 500") + "). Verifique se as variáveis do Supabase estão configuradas na Vercel.");
                 }
@@ -446,107 +452,70 @@
         }
 
         // --- ABA 2: GERAR RELATÓRIOS ---
-        async function buscarClientes(e) {
-            e.preventDefault();
-            const periodo = document.getElementById('busca_periodo').value.trim();
-            if (!periodo) return;
+        async function buscarOcorrenciasCliente(cliente_id) {
+            const divResultado = document.getElementById('resultadoOcorrenciasCliente');
+            const divVazia = document.getElementById('buscaVazia');
+            const listaDiv = document.getElementById('listaOcorrenciasCliente');
+            
+            if (!cliente_id) {
+                divResultado.classList.add('hidden');
+                divVazia.classList.remove('hidden');
+                divVazia.innerText = "Selecione um cliente acima para visualizar o histórico de ocorrências.";
+                return;
+            }
 
-            const btn = document.getElementById('btnBuscar');
-            btn.disabled = true;
-            btn.innerHTML = 'Buscando...';
+            listaDiv.innerHTML = '<div class="text-center text-gray-500 py-4">Buscando na nuvem...</div>';
+            divVazia.classList.add('hidden');
+            divResultado.classList.remove('hidden');
 
             try {
-                const res = await fetch(`/api/clientes-com-ocorrencias?periodo=${encodeURIComponent(periodo)}`);
+                const res = await fetch(`/api/ocorrencias/${cliente_id}`);
                 const data = await res.json();
-
+                
                 if (res.ok) {
-                    renderClientesPeriodo(data);
+                    if (data.length === 0) {
+                        listaDiv.innerHTML = '<div class="text-center text-gray-500 py-4">Nenhuma ocorrência salva para este cliente.</div>';
+                    } else {
+                        listaDiv.innerHTML = data.map(oc => `
+                            <div class="border-b border-gray-200 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Data: ${oc.data || 'S/ Data'}</span>
+                                    <span class="text-xs text-gray-500">Ref: ${oc.numero_original || '-'}</span>
+                                </div>
+                                <div class="text-gray-800 mb-1"><strong>Descrição:</strong> ${oc.descricao}</div>
+                                <div class="text-gray-600"><strong>Resolução:</strong> ${oc.status}</div>
+                            </div>
+                        `).join('');
+                    }
                 } else {
-                    alert("Erro ao buscar: " + data.error);
+                    listaDiv.innerHTML = `<div class="text-red-500 py-4">Erro: ${data.error}</div>`;
                 }
             } catch (err) {
                 console.error(err);
-                alert("Erro de conexão.");
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Buscar Clientes';
+                listaDiv.innerHTML = '<div class="text-red-500 py-4">Erro de conexão.</div>';
             }
         }
 
-        function renderClientesPeriodo(clientesEncontrados) {
-            const container = document.getElementById('listaClientesPeriodo');
-            const divResultado = document.getElementById('resultadoBusca');
-            const divVazia = document.getElementById('buscaVazia');
-
-            if (!clientesEncontrados || clientesEncontrados.length === 0) {
-                divResultado.classList.add('hidden');
-                divVazia.classList.remove('hidden');
-                return;
-            }
-
-            divVazia.classList.add('hidden');
-            divResultado.classList.remove('hidden');
-            container.innerHTML = '';
-
-            // Botão "Selecionar Todos"
-            container.innerHTML = `
-                <div class="flex items-center px-4 py-2 bg-gray-100 rounded-md border border-gray-200">
-                    <input type="checkbox" id="checkAll" onchange="toggleAll(this)" class="w-4 h-4 text-blue-600 rounded" checked>
-                    <label for="checkAll" class="ml-3 text-sm font-bold text-gray-700">Selecionar Todos</label>
-                </div>
-            `;
-
-            clientesEncontrados.forEach(c => {
-                container.innerHTML += `
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-white border border-gray-200 rounded-md hover:border-blue-300 transition-colors gap-3">
-                        <div class="flex items-center flex-1">
-                            <input type="checkbox" name="cliente_selecionado" value="${c.id}" class="w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
-                            <label class="ml-3 cursor-pointer select-none">
-                                <span class="font-bold text-gray-800">${c.nome}</span>
-                                <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">${c.ocorrencias_count} ocorrências</span>
-                            </label>
-                        </div>
-                        <div class="flex items-center sm:w-1/3">
-                            <label class="text-xs text-gray-500 mr-2 whitespace-nowrap">Meta de Rotas:</label>
-                            <input type="number" name="rotas_${c.id}" placeholder="Ex: 50" required class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function toggleAll(source) {
-            const checkboxes = document.getElementsByName('cliente_selecionado');
-            for (let i = 0; i < checkboxes.length; i++) {
-                checkboxes[i].checked = source.checked;
-            }
-        }
-
-        async function gerarSLA(e) {
+        async function gerarSlaCliente(e) {
             e.preventDefault();
 
-            const checkboxes = document.querySelectorAll('input[name="cliente_selecionado"]:checked');
-            if (checkboxes.length === 0) {
-                alert("Selecione pelo menos um cliente para gerar o SLA.");
+            const cliente_id = document.getElementById('select_cliente_relatorio').value;
+            if (!cliente_id) {
+                alert("Selecione um cliente primeiro.");
                 return;
             }
 
-            const clientesList = [];
-            const rotasMap = {};
+            const periodo = document.getElementById('periodo_gerar').value.trim();
+            const rotas = document.getElementById('meta_rotas_gerar').value;
+            const exportType = document.getElementById('tipo_exportacao_gerar').value;
+            const logoInput = document.getElementById('logo_gerar');
 
-            checkboxes.forEach(cb => {
-                clientesList.push(cb.value);
-                const rotasInput = document.querySelector(`input[name="rotas_${cb.value}"]`);
-                rotasMap[cb.value] = rotasInput ? parseInt(rotasInput.value) : 0;
-            });
-
-            const periodo = document.getElementById('busca_periodo').value.trim();
-            const exportType = document.querySelector('input[name="tipo_exportacao"]:checked').value;
-            const logoInput = document.getElementById('logo');
+            const clientesListPayload = [cliente_id];
+            const rotasMap = { [cliente_id]: parseInt(rotas) };
 
             const formData = new FormData();
             formData.append('periodo', periodo);
-            formData.append('clientes', JSON.stringify(clientesList));
+            formData.append('clientes', JSON.stringify(clientesListPayload));
             formData.append('rotas', JSON.stringify(rotasMap));
             formData.append('tipo_exportacao', exportType);
             if (logoInput.files[0]) {
@@ -555,7 +524,7 @@
 
             const btn = document.getElementById('gerarBtn');
             const originalText = btn.innerHTML;
-            btn.innerHTML = 'Gerando...';
+            btn.innerHTML = 'Baixando...';
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed');
 
