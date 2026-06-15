@@ -178,71 +178,120 @@ app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
             const { data: clienteData } = await supabase.from('clientes').select('nome').eq('id', cliente_id).single();
             const nome_cliente = clienteData ? clienteData.nome : 'Cliente Desconhecido';
 
-            // Buscar ocorrências do período
+            const isRange = periodo.includes('-');
+            let mesInicial, anoInicial, mesFinal, anoFinal;
+            
+            if (isRange) {
+                const parts = periodo.split('-');
+                [mesInicial, anoInicial] = parts[0].split('/');
+                [mesFinal, anoFinal] = parts[1].split('/');
+            } else {
+                [mesInicial, anoInicial] = periodo.split('/');
+                mesFinal = mesInicial;
+                anoFinal = anoInicial;
+            }
+
+            const dtInicial = new Date(anoInicial, parseInt(mesInicial) - 1, 1);
+            const dtFinal = new Date(anoFinal, parseInt(mesFinal), 0); // último dia do mês final
+
+            // Buscar todas as ocorrências do cliente e filtrar no Node.js por segurança com datas
             const { data: ocorrenciasData } = await supabase
                 .from('ocorrencias')
                 .select('*')
-                .eq('cliente_id', cliente_id)
-                .like('data', `%${periodo}%`);
+                .eq('cliente_id', cliente_id);
                 
-            const ocorrenciasList = ocorrenciasData || [];
+            let ocorrenciasList = (ocorrenciasData || []).filter(oc => {
+                if (!oc.data) return false;
+                const match = oc.data.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (!match) return false;
+                const ocDate = new Date(match[3], parseInt(match[2]) - 1, parseInt(match[1]));
+                return ocDate >= dtInicial && ocDate <= dtFinal;
+            });
             
             const agrupado = {};
             ocorrenciasList.forEach(oc => {
                 let m = 'Desconhecido';
                 if (oc.data) {
-                    const match = oc.data.match(/(\d{1,2})[\/\-](\d{4})/);
-                    if (match) m = match[1].padStart(2, '0') + '/' + match[2];
+                    const match = oc.data.match(/(\d{1,2})[\/\-](\d{2})[\/\-](\d{4})/);
+                    if (match) m = match[2].padStart(2, '0') + '/' + match[3];
                 }
                 if (!agrupado[m]) agrupado[m] = [];
                 agrupado[m].push(oc);
             });
 
-            const m = periodo; // Vamos usar o período digitado como Mês
-            const totalRotasMes = parseInt(rotasMap[cliente_id]) || 0;
-            const ocorrenciasMesCount = agrupado[m] ? agrupado[m].length : (ocorrenciasList.length || 0); // fallback para o total da busca
+            // Para relatórios consolidados de múltiplos meses, o título é o range
+            const tituloPeriodo = isRange ? `${parts[0]} a ${parts[1]}` : periodo;
             
-            let meta = 100;
-            if (totalRotasMes > 0) meta = ((totalRotasMes - ocorrenciasMesCount) / totalRotasMes) * 100;
+            const metasMensais = rotasMap[cliente_id] || {}; // Ex: { "04/2026": 500, "05/2026": 624 }
             
-            let nivel = 'Limite Crítico (Plano de Ação)';
-            if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
-            else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
+            // Vamos iterar sobre o período e gerar a lista de meses
+            let dLoop = new Date(dtInicial);
+            const mesesResultados = [];
+            let somaRotasPeriodo = 0;
+            let somaOcorrenciasPeriodo = 0;
 
-            const mTolerancia = Math.round(totalRotasMes * 0.03);
-            const mMeta = Math.round(totalRotasMes * 0.01);
-            const mPadraoMin = Math.round(totalRotasMes * 0.02);
-            const mCritico = Math.round(totalRotasMes * 0.05);
+            while (dLoop <= dtFinal) {
+                const monthStr = String(dLoop.getMonth() + 1).padStart(2, '0') + '/' + dLoop.getFullYear();
+                
+                const rotasDesteMes = metasMensais[monthStr] || 0;
+                const ocorrenciasDesteMes = agrupado[monthStr] ? agrupado[monthStr].length : 0;
+                
+                somaRotasPeriodo += rotasDesteMes;
+                somaOcorrenciasPeriodo += ocorrenciasDesteMes;
+                
+                let meta = 100;
+                if (rotasDesteMes > 0) meta = ((rotasDesteMes - ocorrenciasDesteMes) / rotasDesteMes) * 100;
+                
+                let nivel = 'Limite Crítico (Plano de Ação)';
+                if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
+                else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
+
+                mesesResultados.push({
+                    mes: monthStr,
+                    rotas: rotasDesteMes,
+                    ocorrencias: ocorrenciasDesteMes,
+                    meta: meta.toFixed(2).replace('.', ',') + '%',
+                    nivel: nivel
+                });
+
+                dLoop.setMonth(dLoop.getMonth() + 1);
+            }
+            
+            // Meta Geral Consolidada
+            let metaGeral = 100;
+            if (somaRotasPeriodo > 0) metaGeral = ((somaRotasPeriodo - somaOcorrenciasPeriodo) / somaRotasPeriodo) * 100;
+            let nivelGeral = 'Limite Crítico (Plano de Ação)';
+            if (metaGeral >= 99.0) nivelGeral = 'Excelência (Alta Performance)';
+            else if (metaGeral >= 97.0) nivelGeral = 'Padrão de Mercado (Saudável)';
+
+            const mTolerancia = Math.round(somaRotasPeriodo * 0.03);
+            const mMeta = Math.round(somaRotasPeriodo * 0.01);
+            const mPadraoMin = Math.round(somaRotasPeriodo * 0.02);
+            const mCritico = Math.round(somaRotasPeriodo * 0.05);
 
             let mPeso = "0,000";
-            if (totalRotasMes > 0) {
-                mPeso = ((1 / totalRotasMes) * 100).toFixed(3).replace('.', ',');
+            if (somaRotasPeriodo > 0) {
+                mPeso = ((1 / somaRotasPeriodo) * 100).toFixed(3).replace('.', ',');
             }
 
             const docData = {
                 logo: "placeholder",
                 nome_cliente: nome_cliente,
-                titulo: isMensal ? periodo : `Consolidado ${periodo}`,
-                mes: periodo,
-                total_rotas: totalRotasMes,
-                media_rotas: totalRotasMes,
-                rotas: totalRotasMes,
-                ocorrencias: ocorrenciasMesCount,
-                meta: meta.toFixed(2).replace('.', ',') + '%',
-                nivel: nivel,
+                titulo: isMensal ? periodo : `Consolidado ${tituloPeriodo}`,
+                mes: tituloPeriodo,
+                total_rotas: somaRotasPeriodo,
+                media_rotas: Math.round(somaRotasPeriodo / Math.max(1, mesesResultados.length)),
+                rotas: somaRotasPeriodo,
+                ocorrencias: somaOcorrenciasPeriodo,
+                meta: metaGeral.toFixed(2).replace('.', ',') + '%',
+                nivel: nivelGeral,
                 tolerancia_ocorrencias: mTolerancia,
                 meta_ocorrencias: mMeta,
                 padrao_minimo: mPadraoMin,
                 critico_ocorrencias: mCritico,
                 peso_estatistico: mPeso,
                 lista_ocorrencias: ocorrenciasList,
-                meses: [{
-                    mes: periodo,
-                    rotas: totalRotasMes,
-                    ocorrencias: ocorrenciasMesCount,
-                    meta: meta.toFixed(2).replace('.', ','),
-                    nivel: nivel
-                }]
+                meses: mesesResultados
             };
 
             const content = fs.readFileSync(templatePath, 'binary');
