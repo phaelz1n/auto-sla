@@ -143,6 +143,21 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
     }
 });
 
+// Rota para deletar uma ocorrência
+app.delete('/api/ocorrencias/:id', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('ocorrencias')
+            .delete()
+            .eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Erro ao deletar:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
     try {
         const { periodo, clientes, rotas, tipo_exportacao } = req.body;

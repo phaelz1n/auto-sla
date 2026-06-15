@@ -216,6 +216,23 @@
             if (periodoFinalSelect) periodoFinalSelect.addEventListener('change', gerarInputsMetas);
         });
 
+        window.deletarOcorrencia = async (id) => {
+            if (!confirm("Tem certeza que deseja excluir esta ocorrência permanentemente?")) return;
+            
+            try {
+                const res = await fetch(`/api/ocorrencias/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    const clienteId = document.getElementById('select_cliente_relatorio').value;
+                    buscarOcorrenciasCliente(clienteId);
+                } else {
+                    const data = await res.json();
+                    alert("Erro ao deletar: " + data.error);
+                }
+            } catch (err) {
+                alert("Erro ao deletar: " + err.message);
+            }
+        };
+
         // Alternar Abas
         function switchTab(tabId) {
             document.getElementById('tab-lancamento').classList.add('hidden-tab');
@@ -555,14 +572,38 @@
                         document.getElementById('periodo_inicial').innerHTML = '<option value="">--</option>';
                         document.getElementById('periodo_final').innerHTML = '<option value="">-- Igual Inicial --</option>';
                     } else {
+                        // Identificação de Duplicatas
+                        const vistos = new Set();
+                        data.forEach(oc => {
+                            oc.isDuplicate = false;
+                            if (oc.data && oc.descricao) {
+                                // Usar data e até 30 caracteres da descricao para checar duplicata
+                                const descStr = String(oc.descricao).substring(0,30).toLowerCase().replace(/\s+/g,'');
+                                const chave = `${oc.data}_${descStr}`;
+                                if (vistos.has(chave)) {
+                                    oc.isDuplicate = true;
+                                } else {
+                                    vistos.add(chave);
+                                }
+                            }
+                        });
+
                         listaDiv.innerHTML = data.map(oc => `
-                            <div class="border-b border-gray-200 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
+                            <div class="border-b border-gray-200 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0 ${oc.isDuplicate ? 'bg-yellow-50 p-2 rounded border border-yellow-200' : ''}">
                                 <div class="flex justify-between items-start mb-1">
-                                    <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Data: ${oc.data || 'S/ Data'}</span>
-                                    <span class="text-xs text-gray-500">Ref: ${oc.numero_original || '-'}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Data: ${oc.data || 'S/ Data'}</span>
+                                        ${oc.isDuplicate ? '<span class="text-xs font-bold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">⚠️ Possível Duplicata</span>' : ''}
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-xs text-gray-500">Ref: ${oc.numero_original || '-'}</span>
+                                        <button type="button" onclick="deletarOcorrencia(${oc.id})" class="text-red-500 hover:text-red-700 p-1" title="Excluir Ocorrência">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="text-gray-800 mb-1"><strong>Descrição:</strong> ${oc.descricao}</div>
-                                <div class="text-gray-600"><strong>Resolução:</strong> ${oc.status}</div>
+                                <div class="text-gray-800 mb-1 text-sm"><strong>Descrição:</strong> ${oc.descricao}</div>
+                                <div class="text-gray-600 text-sm"><strong>Resolução:</strong> ${oc.status}</div>
                             </div>
                         `).join('');
 
