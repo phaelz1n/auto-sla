@@ -261,12 +261,15 @@ app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
                 if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
                 else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
 
+                const ocorrenciasDoMes = ocorrenciasList.filter(o => o.data.includes(monthStr));
+
                 mesesResultados.push({
                     mes: monthStr,
                     rotas: rotasDesteMes,
                     ocorrencias: ocorrenciasDesteMes,
                     meta: meta.toFixed(2).replace('.', ',') + '%',
-                    nivel: nivel
+                    nivel: nivel,
+                    lista_ocorrencias_mes: ocorrenciasDoMes
                 });
 
                 dLoop.setMonth(dLoop.getMonth() + 1);
@@ -279,14 +282,17 @@ app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
             if (metaGeral >= 99.0) nivelGeral = 'Excelência (Alta Performance)';
             else if (metaGeral >= 97.0) nivelGeral = 'Padrão de Mercado (Saudável)';
 
-            const mTolerancia = Math.round(somaRotasPeriodo * 0.03);
-            const mMeta = Math.round(somaRotasPeriodo * 0.01);
-            const mPadraoMin = Math.round(somaRotasPeriodo * 0.02);
-            const mCritico = Math.round(somaRotasPeriodo * 0.05);
+            const mediaRotasPeriodo = Math.round(somaRotasPeriodo / Math.max(1, mesesResultados.length));
+            
+            // Calculando tolerâncias baseadas na média do período
+            const mTolerancia = Math.round(mediaRotasPeriodo * 0.03);
+            const mMeta = Math.round(mediaRotasPeriodo * 0.01);
+            const mPadraoMin = Math.round(mediaRotasPeriodo * 0.02);
+            const mCritico = Math.round(mediaRotasPeriodo * 0.05);
 
             let mPeso = "0,000";
-            if (somaRotasPeriodo > 0) {
-                mPeso = ((1 / somaRotasPeriodo) * 100).toFixed(3).replace('.', ',');
+            if (mediaRotasPeriodo > 0) {
+                mPeso = ((1 / mediaRotasPeriodo) * 100).toFixed(3).replace('.', ',');
             }
 
             const docData = {
@@ -295,8 +301,8 @@ app.post('/api/gerar-sla-novo', upload.single('logo'), async (req, res) => {
                 titulo: isMensal ? periodo : `Consolidado ${tituloPeriodo}`,
                 mes: tituloPeriodo,
                 total_rotas: somaRotasPeriodo,
-                media_rotas: Math.round(somaRotasPeriodo / Math.max(1, mesesResultados.length)),
-                rotas: somaRotasPeriodo,
+                media_rotas: mediaRotasPeriodo,
+                rotas: isMensal ? somaRotasPeriodo : mediaRotasPeriodo,
                 ocorrencias: somaOcorrenciasPeriodo,
                 meta: metaGeral.toFixed(2).replace('.', ',') + '%',
                 nivel: nivelGeral,

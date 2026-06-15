@@ -223,10 +223,10 @@
                     buscarOcorrenciasCliente(clienteId);
                 } else {
                     const data = await res.json();
-                    alert("Erro ao deletar: " + data.error);
+                    showToast("Erro ao deletar: " + data.error, "error");
                 }
             } catch (err) {
-                alert("Erro ao deletar: " + err.message);
+                showToast("Erro ao deletar: " + err.message, "error");
             }
         };
 
@@ -258,11 +258,11 @@
                             clientesList.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
                     }
                 } else {
-                    alert("⚠️ Erro de Servidor: Não foi possível carregar a lista de clientes. (" + (data.error || "Erro 500") + "). Verifique se as variáveis do Supabase estão configuradas na Vercel.");
+                    showToast("Erro de Servidor: Não foi possível carregar a lista de clientes.", "error");
                 }
             } catch (e) {
                 console.error("Erro ao buscar clientes:", e);
-                alert("⚠️ Erro de Conexão ao buscar clientes.");
+                showToast("Erro de Conexão ao buscar clientes.", "error");
             }
         }
 
@@ -467,7 +467,7 @@
                     renderOcorrencias();
                 } catch (e) {
                     console.error(e);
-                    alert(`Erro ao processar a imagem ${i+1}. Tente novamente.`);
+                    showToast(`Erro ao processar a imagem ${i+1}. Tente novamente.`, "error");
                 }
             }
             
@@ -499,7 +499,7 @@
 
             const hasInvalid = ocorrenciasData.some(o => !o.cliente_id);
             if (hasInvalid) {
-                alert("⚠️ Atenção: Há ocorrências sem cliente associado. Por favor, selecione um cliente em todas as caixas (destacadas em vermelho).");
+                showToast("Atenção: Há ocorrências sem cliente associado. Selecione um cliente nas caixas destacadas em vermelho.", "warning");
                 return;
             }
 
@@ -526,15 +526,15 @@
 
                 if (res.ok) {
                     ocorrenciasData = []; // Limpa a caixa de entrada
+                    showToast("Ocorrências salvas no banco com sucesso!", "success");
                     renderOcorrencias();
-                    alert("✅ Ocorrências salvas no banco com sucesso!");
                 } else {
                     const err = await res.json();
-                    alert("Erro ao salvar: " + err.error);
+                    showToast("Erro ao salvar: " + err.error, "error");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Erro de conexão com o servidor.");
+                showToast("Erro de conexão com o servidor.", "error");
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -639,7 +639,7 @@
 
             const cliente_id = document.getElementById('select_cliente_relatorio').value;
             if (!cliente_id) {
-                alert("Selecione um cliente primeiro.");
+                showToast("Selecione um cliente primeiro.", "warning");
                 return;
             }
 
@@ -647,7 +647,7 @@
             const pFim = document.getElementById('periodo_final').value || pIni;
             
             if (!pIni) {
-                alert("Selecione o Período Inicial.");
+                showToast("Selecione o Período Inicial.", "warning");
                 return;
             }
 
@@ -709,17 +709,58 @@
                     document.body.removeChild(a);
                 } else {
                     const err = await response.text();
-                    alert("Erro ao gerar documento: " + err);
+                    showToast("Erro ao gerar documento: " + err, "error");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Erro de conexão ao gerar SLA.");
+                showToast("Erro de conexão ao gerar SLA.", "error");
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-75', 'cursor-not-allowed');
             }
         }
+
+        // Função de Toasts Modernos
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-gray-800';
+            let icon = '';
+            
+            if (type === 'success') {
+                bgClass = 'bg-green-600';
+                icon = '✓';
+            } else if (type === 'error') {
+                bgClass = 'bg-red-600';
+                icon = '✕';
+            } else if (type === 'warning') {
+                bgClass = 'bg-yellow-500 text-gray-900';
+                icon = '⚠️';
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all duration-300 transform translate-y-10 opacity-0 ${bgClass}`;
+            if (type === 'warning') toast.classList.remove('text-white');
+            
+            toast.innerHTML = `<span class="font-bold text-lg">${icon}</span> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Anim In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+            
+            // Anim Out
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
     </script>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 </body>
 </html>
