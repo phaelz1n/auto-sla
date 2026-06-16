@@ -53,7 +53,10 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
             if (!match) return false;
             const ocDate = new Date(match[3], parseInt(match[2]) - 1, parseInt(match[1]));
             return ocDate >= dtInicial && ocDate <= dtFinal;
-        });
+        }).map(oc => ({
+            ...oc,
+            numero: oc.numero_original || '-'
+        }));
         
         const agrupado = {};
         ocorrenciasList.forEach(oc => {
