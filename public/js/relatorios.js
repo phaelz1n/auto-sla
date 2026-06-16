@@ -156,11 +156,12 @@ window.gerarSlaCliente = async function(e) {
     const clientesListPayload = [cliente_id];
     const rotasMap = { [cliente_id]: metasMensais };
 
-    const formData = new FormData();
-    formData.append('periodo', periodo);
-    formData.append('clientes', JSON.stringify(clientesListPayload));
-    formData.append('rotas', JSON.stringify(rotasMap));
-    formData.append('tipo_exportacao', exportType);
+    const payload = {
+        periodo: periodo,
+        clientes: JSON.stringify(clientesListPayload),
+        rotas: JSON.stringify(rotasMap),
+        tipo_exportacao: exportType
+    };
 
     const btn = document.getElementById('gerarBtn');
     const originalText = btn.innerHTML;
@@ -171,7 +172,10 @@ window.gerarSlaCliente = async function(e) {
     try {
         const response = await fetch('/api/gerar-sla-novo', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
