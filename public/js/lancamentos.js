@@ -46,6 +46,13 @@ window.renderNumbersOnly = function() {
 window.updateVisualNumbers = async function() {
     const groups = {};
     for (const oc of window.ocorrenciasData) {
+        const clienteObj = window.clientesList.find(c => c.id === oc.cliente_id);
+        const isPerto = clienteObj && clienteObj.nome.toUpperCase().includes('PERTO');
+
+        if (isPerto) {
+            continue;
+        }
+
         if (!oc.cliente_id || !oc.data) {
             oc.numero = '';
             continue;
@@ -108,6 +115,9 @@ window.renderOcorrencias = function() {
         row.className = `p-4 rounded-lg border relative ${!oc.cliente_id ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 shadow-sm'}`;
         
         const selectHtml = clientesOptions.replace(`value="${oc.cliente_id}"`, `value="${oc.cliente_id}" selected`);
+        
+        const clienteObj = window.clientesList.find(c => c.id == oc.cliente_id);
+        const isPerto = clienteObj && clienteObj.nome.toUpperCase().includes('PERTO');
 
         row.innerHTML = `
             <button type="button" onclick="removeOcorrencia(${oc.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 rounded-full w-6 h-6 flex items-center justify-center font-bold transition-colors">×</button>
@@ -122,7 +132,7 @@ window.renderOcorrencias = function() {
                 
                 <div class="sm:col-span-4 md:col-span-2">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Nº</label>
-                    <input type="text" id="numero_${oc.id}" value="${oc.numero || ''}" placeholder="..." class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-blue-50 font-bold text-blue-700 cursor-not-allowed" readonly title="A numeração será gerada automaticamente de forma sequencial por cliente e ano.">
+                    <input type="text" id="numero_${oc.id}" value="${oc.numero || ''}" ${isPerto ? `onchange="updateOcorrencia(${oc.id}, 'numero', this.value)" placeholder="062/2026"` : `placeholder="..." readonly title="A numeração será gerada automaticamente de forma sequencial por cliente e ano."`} class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 ${isPerto ? 'bg-white font-normal text-gray-800' : 'bg-blue-50 font-bold text-blue-700 cursor-not-allowed'}">
                 </div>
                 
                 <div class="sm:col-span-8 md:col-span-5">

@@ -44,11 +44,21 @@ window.handleOcrUpload = async function(event) {
             const tempoSocorro = extract(/Tempo de socorro:\s*(.+)/i);
             const responsavel = extract(/Operacional responsável:\s*(.+)/i);
             
+            // Perto OCR specifics
+            const ocorrenciaPerto = extract(/OCORRÊNCIA:\s*(.+)/i);
+            const linhaPerto = extract(/LINHA:\s*(.+)/i);
+
             const detalheMatch = text.match(/Detalhe do ocorrido:\s*([\s\S]*?)(?:Operacional responsável:|$)/i);
-            const detalhe = detalheMatch ? detalheMatch[1].trim() : '';
+            let detalhe = detalheMatch ? detalheMatch[1].trim() : '';
+
+            const descritivoPertoMatch = text.match(/DESCRITIVO:\s*([\s\S]*?)(?:RESOLUÇÃO:|$)/i);
+            if (descritivoPertoMatch) {
+                detalhe = descritivoPertoMatch[1].trim();
+            }
 
             let descParts = [];
             if (empresa) descParts.push(`Empresa: ${empresa}`);
+            if (linhaPerto) descParts.push(`Linha: ${linhaPerto}`);
             if (rota) descParts.push(`(Rota: ${rota})`);
             if (motorista) descParts.push(`- Motorista: ${motorista}`);
             const cabecalhoDesc = descParts.join(' ');
@@ -58,7 +68,12 @@ window.handleOcrUpload = async function(event) {
             if (impacto) statusParts.push(`Impacto: ${impacto}`);
             if (tempoSocorro) statusParts.push(`Tempo socorro: ${tempoSocorro}`);
             if (responsavel) statusParts.push(`(Resp: ${responsavel})`);
-            const statusCompleto = statusParts.join(' - ');
+            let statusCompleto = statusParts.join(' - ');
+
+            const resolucaoPertoMatch = text.match(/RESOLUÇÃO:\s*([\s\S]*?)$/i);
+            if (resolucaoPertoMatch) {
+                statusCompleto = resolucaoPertoMatch[1].trim();
+            }
 
             let matchedClientId = '';
             const normalizeStr = (s) => s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
@@ -87,7 +102,7 @@ window.handleOcrUpload = async function(event) {
             window.ocorrenciasData.push({
                 id,
                 cliente_id: matchedClientId,
-                numero: '',
+                numero: ocorrenciaPerto || '',
                 data: dataStr || '',
                 descricao: descricaoCompleta.trim(),
                 status: statusCompleto.trim()
