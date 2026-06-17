@@ -35,8 +35,20 @@ router.post('/ocorrencias/lote', async (req, res) => {
     if (hasInvalid) return res.status(400).json({ error: "Todas as ocorrências precisam de um cliente associado." });
 
     try {
+        const clientIdsArray = [...new Set(ocorrencias.map(o => o.cliente_id).filter(id => id))];
+        const { data: clientsData } = await supabase.from('clientes').select('id, nome').in('id', clientIdsArray);
+        const clientsMap = {};
+        if (clientsData) {
+            clientsData.forEach(c => clientsMap[c.id] = c.nome);
+        }
+
         const grouped = {};
         for (const oc of ocorrencias) {
+            const nomeCliente = clientsMap[oc.cliente_id] || '';
+            if (nomeCliente.toUpperCase().includes('PERTO')) {
+                continue; // Preserva o numero_original enviado do frontend
+            }
+
             if (!oc.data) continue;
             const match = oc.data.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
             if (!match) continue;
@@ -49,13 +61,6 @@ router.post('/ocorrencias/lote', async (req, res) => {
                 grouped[key] = { client, yearShort, yearStr, items: [] };
             }
             grouped[key].items.push(oc);
-        }
-
-        const clientIds = Object.keys(grouped).map(k => grouped[k].client);
-        const { data: clientsData } = await supabase.from('clientes').select('id, nome').in('id', clientIds);
-        const clientsMap = {};
-        if (clientsData) {
-            clientsData.forEach(c => clientsMap[c.id] = c.nome);
         }
 
         const getPrefix = (nome) => {
@@ -147,6 +152,11 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
             const client = oc.cliente_id;
             
             if (!client) continue;
+
+            const nomeCliente = clientesMap[client] || '';
+            if (nomeCliente.toUpperCase().includes('PERTO')) {
+                continue; // Preserva o numero_original enviado do frontend
+            }
 
             const key = `${client}_${yearShort}`;
             if (!grouped[key]) grouped[key] = { items: [] };
