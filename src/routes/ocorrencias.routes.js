@@ -46,7 +46,11 @@ router.post('/ocorrencias/lote', async (req, res) => {
         for (const oc of ocorrencias) {
             const nomeCliente = clientsMap[oc.cliente_id] || '';
             if (nomeCliente.toUpperCase().includes('PERTO')) {
-                continue; // Preserva o numero_original enviado do frontend
+                // Se o usuário preencheu um número customizado (ex: 062/2026) que não é o nosso padrão, preserva
+                if (oc.numero_original && !String(oc.numero_original).toUpperCase().startsWith('PERTO-')) {
+                    continue;
+                }
+                // Se está vazio ou é o nosso padrão (PERTO-...), deixa o backend gerar a sequência correta
             }
 
             if (!oc.data) continue;
@@ -155,7 +159,10 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
 
             const nomeCliente = clientesMap[client] || '';
             if (nomeCliente.toUpperCase().includes('PERTO')) {
-                continue; // Preserva o numero_original enviado do frontend
+                // Se a ocorrência já possui um número customizado (ex: 062/2026) que não é o nosso padrão, preserva
+                if (oc.numero_original && !String(oc.numero_original).toUpperCase().startsWith('PERTO-')) {
+                    continue;
+                }
             }
 
             const key = `${client}_${yearShort}`;
