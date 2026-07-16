@@ -56,7 +56,14 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
         }).map(oc => ({
             ...oc,
             numero: oc.numero_original || '-'
-        }));
+        })).sort((a, b) => {
+            const mA = a.data.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            const mB = b.data.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (!mA || !mB) return 0;
+            const dA = new Date(mA[3], parseInt(mA[2]) - 1, parseInt(mA[1]));
+            const dB = new Date(mB[3], parseInt(mB[2]) - 1, parseInt(mB[1]));
+            return dA - dB;
+        });
         
         const agrupado = {};
         ocorrenciasList.forEach(oc => {
