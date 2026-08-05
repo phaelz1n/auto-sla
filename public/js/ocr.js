@@ -3,8 +3,42 @@ const normalizeStr = (s) => s
     ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, '')
     : '';
 
+// ─── Limpa texto OCR: remove cabeçalho/rodapé da Trans Pinho ────────────────
+function limparTextoOcr(text) {
+    // Remove linhas que contenham informações da Trans Pinho (remetente)
+    const linhasParaRemover = [
+        /trans\s*pinho/i,
+        /rua\s+fl[oó]rida/i,
+        /bairro\s+nossa\s+ch[aá]cara/i,
+        /cep\s+\d{5}/i,
+        /fone\s+\d/i,
+        /site:\s*www\./i,
+        /e-?mail:\s*\S+@/i,
+        /transpinho\.com/i,
+        /gravata[ií]\s*[—\-]\s*cep/i,
+    ];
+
+    const linhas = text.split('\n');
+    const linhasFiltradas = linhas.filter(linha => {
+        const l = linha.trim();
+        if (!l) return true; // preserva linhas vazias
+        return !linhasParaRemover.some(re => re.test(l));
+    });
+    let textoLimpo = linhasFiltradas.join('\n');
+
+    // Descarta tudo antes do início real do documento
+    // (procura por "A Perto", "Conforme solicitado" ou "OCORRÊNCIA")
+    const inicioMatch = textoLimpo.search(/(?:A Perto|Conforme solicitado|OCORR[EÊ]NCIA)/i);
+    if (inicioMatch > 0) {
+        textoLimpo = textoLimpo.substring(inicioMatch);
+    }
+
+    return textoLimpo;
+}
+
 // ─── Parser específico das ocorrências da Perto ─────────────────────────────
-function parsePerto(text) {
+function parsePerto(rawText) {
+    const text = limparTextoOcr(rawText);
     const extract = (regex) => {
         const match = text.match(regex);
         return match ? match[1].trim() : '';
