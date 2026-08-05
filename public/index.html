@@ -3,41 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto SLA - Painel de Gestão</title>
+    <title>Auto SLA - Lançamentos</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script type="module">
         import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
         window.pdfjsLib = pdfjsLib;
     </script>
+    
+    <script>
+        // Adapting Tailwind colors to match the dashboard's dark theme
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gray: {
+                            50: '#080c16',
+                            100: '#0f172a',
+                            200: 'rgba(148,163,184,.12)',
+                            300: '#1e293b',
+                            400: '#475569',
+                            500: '#94a3b8',
+                            600: '#cbd5e1',
+                            700: '#e2e8f0',
+                            800: '#f1f5f9',
+                            900: '#f8fafc'
+                        },
+                        white: '#0f172a', // White becomes surface dark
+                        black: '#f8fafc', // Black becomes text light
+                        blue: {
+                            50: 'rgba(99,102,241,0.05)',
+                            100: 'rgba(99,102,241,0.1)',
+                            200: 'rgba(99,102,241,0.2)',
+                            300: 'rgba(99,102,241,0.3)',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#e0e7ff'
+                        },
+                        green: {
+                            50: 'rgba(16,185,129,0.1)',
+                            100: 'rgba(16,185,129,0.2)',
+                            200: 'rgba(16,185,129,0.3)',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#d1fae5'
+                        },
+                        red: {
+                            50: 'rgba(244,63,94,0.1)',
+                            100: 'rgba(244,63,94,0.2)',
+                            200: 'rgba(244,63,94,0.3)',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            900: '#ffe4e6'
+                        },
+                        purple: {
+                            50: 'rgba(139,92,246,0.1)',
+                            100: 'rgba(139,92,246,0.2)',
+                            200: 'rgba(139,92,246,0.3)',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            900: '#ede9fe'
+                        },
+                        yellow: {
+                            50: 'rgba(245,158,11,0.1)',
+                            100: 'rgba(245,158,11,0.2)',
+                            200: 'rgba(245,158,11,0.3)',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#fef3c7',
+                            900: '#fef3c7'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #080c16; color: #f1f5f9; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 99px; }
+        
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(8,12,22,.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(148,163,184,.12);
+            padding: 0 1.5rem;
+            height: 70px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .topbar-brand { display: flex; align-items: center; gap: 1rem; }
+        .topbar-logo {
+            height: 40px; 
+            object-fit: contain;
+        }
+        .topbar-nav { display: flex; align-items: center; gap: .5rem; }
+        .nav-link {
+            padding: .4rem .9rem; border-radius: 8px; font-size: .85rem;
+            font-weight: 600; color: #94a3b8; text-decoration: none;
+            transition: all .2s;
+        }
+        .nav-link:hover { background: #1e293b; color: #f1f5f9; }
+        .nav-link.active { background: #6366f1; color: #fff; }
+
+        .glass-card {
+            background: #0f172a;
+            border: 1px solid rgba(148,163,184,.12);
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.35);
+        }
+
+        /* Fix text colors inside generated inputs */
+        input, select { background-color: #080c16 !important; color: #f1f5f9 !important; border-color: rgba(148,163,184,.2) !important; }
+        input:focus, select:focus { border-color: #6366f1 !important; outline: none; box-shadow: 0 0 0 1px #6366f1; }
+        
+        /* Make select options legible in dark mode */
+        option { background-color: #0f172a; color: #f1f5f9; }
+
+        /* Force empty state visibility */
+        .text-gray-500 { color: #94a3b8 !important; }
+        .bg-gray-50 { background-color: #080c16 !important; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen">
+<body class="min-h-screen">
     
     <!-- Navbar -->
-    <nav class="bg-blue-600 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-white font-bold text-xl tracking-wider">AUTO SLA</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <a href="/dashboard.html" class="flex items-center gap-2 px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition-all border border-white/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        Dashboard
-                    </a>
-                </div>
+    <header class="topbar">
+        <div class="topbar-brand">
+            <img src="/logo.png" alt="Logo" class="topbar-logo">
+            <div>
+                <div class="font-bold text-base text-gray-800 tracking-wide">Auto SLA</div>
+                <div class="text-xs text-gray-500 mt-[1px]">Lançamentos</div>
             </div>
         </div>
-    </nav>
+
+        <nav class="topbar-nav hidden sm:flex">
+            <a href="/index.html" class="nav-link active">⚡ Lançamentos</a>
+            <a href="/dashboard.html" class="nav-link">📊 Dashboard</a>
+        </nav>
+    </header>
 
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto px-4 py-8">
-        <div class="bg-white rounded-xl shadow-md overflow-hidden min-h-[500px]">
+        <div class="glass-card overflow-hidden min-h-[500px]">
             
             <!-- Tabs -->
             <div class="border-b border-gray-200">
@@ -95,7 +217,7 @@
                         Sua caixa de entrada está vazia.<br>Use os botões acima para lançar ocorrências.
                     </div>
 
-                    <div class="pt-6 border-t flex justify-end">
+                    <div class="pt-6 border-t border-gray-200 flex justify-end">
                         <button type="button" onclick="salvarNoBanco()" id="salvarBtn" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold shadow-md transition-all flex items-center justify-center min-w-[200px]">
                             Salvar no Banco
                         </button>
@@ -124,13 +246,13 @@
                     </div>
 
                     <div id="resultadoOcorrenciasCliente" class="hidden">
-                        <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Ocorrências Salvas do Cliente:</h3>
+                        <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">Ocorrências Salvas do Cliente:</h3>
                         <div id="listaOcorrenciasCliente" class="space-y-3 mb-8 max-h-64 overflow-y-auto bg-white p-3 border border-gray-200 rounded-md shadow-inner text-sm">
                             <!-- Injetado via JS -->
                         </div>
                         
                         <form id="gerarSlaForm" onsubmit="gerarSlaCliente(event)">
-                            <h3 class="text-md font-bold text-gray-800 mb-3 border-b pb-2">Opções para Gerar o Documento:</h3>
+                            <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-gray-200 pb-2">Opções para Gerar o Documento:</h3>
                             <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Exportação</label>
