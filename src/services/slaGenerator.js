@@ -2,11 +2,11 @@ const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
 const path = require('path');
 const fs = require('fs');
-const supabase = require('../config/supabase');
+const db = require('../config/firebase');
 
 async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
-    if (!supabase) throw new Error("Supabase não configurado no .env");
-    
+    if (!db) throw new Error("Firebase não configurado. Adicione firebase-service-account.json");
+
     const clientesList = JSON.parse(clientes);
     const isMensal = tipoExportacao === 'mensal';
     // Caminho da raiz
@@ -23,8 +23,8 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
     let lastBuf = null;
 
     for (const cliente_id of clientesList) {
-        const { data: clienteData } = await supabase.from('clientes').select('nome').eq('id', cliente_id).single();
-        const nome_cliente = clienteData ? clienteData.nome : 'Cliente Desconhecido';
+        const clienteDoc = await db.collection('clientes').doc(String(cliente_id)).get();
+        const nome_cliente = clienteDoc.exists ? clienteDoc.data().nome : 'Cliente Desconhecido';
 
         const isRange = periodo.includes('-');
         let mesInicial, anoInicial, mesFinal, anoFinal, parts;
@@ -42,12 +42,12 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
         const dtInicial = new Date(anoInicial, parseInt(mesInicial) - 1, 1);
         const dtFinal = new Date(anoFinal, parseInt(mesFinal), 0); 
 
-        const { data: ocorrenciasData } = await supabase
-            .from('ocorrencias')
-            .select('*')
-            .eq('cliente_id', cliente_id);
-            
-        let ocorrenciasList = (ocorrenciasData || []).filter(oc => {
+        const ocSnap = await db.collection('ocorrencias')
+            .where('cliente_id', '==', cliente_id)
+            .get();
+        const ocorrenciasData = ocSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        let ocorrenciasList = ocorrenciasData.filter(oc => {
             if (!oc.data) return false;
             const match = oc.data.match(/(\d{2})\/(\d{2})\/(\d{4})/);
             if (!match) return false;
