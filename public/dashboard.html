@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto SLA – Dashboard Executivo</title>
+    <meta name="description" content="Painel executivo com métricas consolidadas de SLA de todos os clientes.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ─── Reset & Base ─────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #080c16;
+            --surface:   #0f172a;
+            --surface-2: #1e293b;
+            --border:    rgba(148,163,184,.12);
+            --indigo:    #6366f1;
+            --violet:    #8b5cf6;
+            --cyan:      #06b6d4;
+            --emerald:   #10b981;
+            --amber:     #f59e0b;
+            --rose:      #f43f5e;
+            --text:      #f1f5f9;
+            --muted:     #94a3b8;
+            --radius:    14px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* ─── Scrollbar ──────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--surface); }
+        ::-webkit-scrollbar-thumb { background: var(--indigo); border-radius: 99px; }
+
+        /* ─── Topbar ─────────────────────────────────────────────── */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(8,12,22,.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .topbar-brand {
+            display: flex; align-items: center; gap: .75rem;
+        }
+        .topbar-logo {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, var(--indigo), var(--violet));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 14px; color: #fff; letter-spacing: -1px;
+        }
+        .topbar-title { font-weight: 700; font-size: 1rem; color: var(--text); }
+        .topbar-sub   { font-size: .72rem; color: var(--muted); margin-top: 1px; }
+
+        .topbar-nav { display: flex; align-items: center; gap: .5rem; }
+        .nav-link {
+            padding: .4rem .9rem; border-radius: 8px; font-size: .82rem;
+            font-weight: 500; color: var(--muted); text-decoration: none;
+            transition: all .2s;
+        }
+        .nav-link:hover { background: var(--surface-2); color: var(--text); }
+        .nav-link.active { background: var(--indigo); color: #fff; }
+
+        /* ─── Layout ─────────────────────────────────────────────── */
+        .page-wrapper { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+        /* ─── Section title ──────────────────────────────────────── */
+        .section-title {
+            font-size: 1.1rem; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem;
+        }
+        .section-title::before {
+            content: '';
+            width: 4px; height: 18px; border-radius: 99px;
+            background: linear-gradient(to bottom, var(--indigo), var(--violet));
+        }
+
+        /* ─── Botão de refresh ───────────────────────────────────── */
+        .btn-refresh {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .5rem 1.1rem; border-radius: 9px;
+            background: linear-gradient(135deg, var(--indigo), var(--violet));
+            color: #fff; font-weight: 600; font-size: .82rem;
+            border: none; cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            box-shadow: 0 4px 15px rgba(99,102,241,.4);
+        }
+        .btn-refresh:hover { opacity: .88; transform: translateY(-1px); }
+        .btn-refresh:active { transform: scale(.97); }
+        .btn-refresh svg { width: 15px; height: 15px; }
+
+        /* ─── KPI Grid ───────────────────────────────────────────── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.5rem;
+            position: relative; overflow: hidden;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+        .kpi-card::after {
+            content: '';
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: var(--kpi-color, var(--indigo));
+        }
+
+        .kpi-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--kpi-color, var(--indigo));
+            opacity: .18;
+            position: absolute; right: 1.2rem; top: 1.2rem;
+            font-size: 1.3rem;
+        }
+        .kpi-icon-real {
+            position: absolute; right: 1.3rem; top: 1.3rem;
+            font-size: 1.4rem;
+        }
+
+        .kpi-label { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; margin: .4rem 0 .2rem; }
+        .kpi-sub   { font-size: .75rem; color: var(--muted); }
+
+        /* ─── Card genérico ──────────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.4rem 1.5rem;
+            overflow: hidden;
+        }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .card-title { font-size: .9rem; font-weight: 700; color: var(--text); }
+        .card-badge {
+            font-size: .7rem; font-weight: 600;
+            padding: .25rem .65rem; border-radius: 99px;
+            background: rgba(99,102,241,.15); color: var(--indigo);
+        }
+
+        /* ─── Grid de Charts ─────────────────────────────────────── */
+        .charts-grid-top {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media(min-width:900px) {
+            .charts-grid-top { grid-template-columns: 2fr 1fr; }
+        }
+
+        .chart-wrap { position: relative; width: 100%; height: 280px; }
+        .chart-wrap-tall { position: relative; width: 100%; height: 340px; }
+
+        /* ─── Heatmap ────────────────────────────────────────────── */
+        #heat-table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+        }
+
+        .heat-table { border-collapse: separate; border-spacing: 2px; }
+        .heat-table th.heat-th {
+            background: var(--surface-2);
+            position: sticky; top: 0; z-index: 5;
+            padding: .5rem .6rem;
+            font-size: .7rem; letter-spacing: .05em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .heat-table td { border-radius: 5px; transition: transform .15s; }
+        .heat-table td:hover { transform: scale(1.2); z-index: 5; position: relative; }
+
+        /* ─── Tabela de Ranking ──────────────────────────────────── */
+        .ranking-table { width: 100%; border-collapse: collapse; }
+        .ranking-table th {
+            text-align: left; font-size: .72rem; font-weight: 600;
+            color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+            padding: .6rem 1rem; border-bottom: 1px solid var(--border);
+        }
+        .ranking-table td { vertical-align: middle; }
+
+        /* ─── Select ─────────────────────────────────────────────── */
+        .dash-select {
+            background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--text); font-size: .8rem; padding: .4rem .75rem;
+            border-radius: 8px; cursor: pointer; outline: none;
+        }
+        .dash-select:focus { border-color: var(--indigo); }
+
+        /* ─── Skeleton ───────────────────────────────────────────── */
+        .skeleton { 
+            background: linear-gradient(90deg, var(--surface), var(--surface-2), var(--surface));
+            background-size: 200%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* ─── Error banner ───────────────────────────────────────── */
+        .error-banner {
+            background: rgba(244,63,94,.1); border: 1px solid rgba(244,63,94,.3);
+            color: #fda4af; border-radius: 10px; padding: 1rem 1.4rem;
+            font-size: .88rem; margin-bottom: 1rem;
+        }
+
+        /* ─── Divider ────────────────────────────────────────────── */
+        .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+        /* ─── Animations ─────────────────────────────────────────── */
+        .fade-in { animation: fadeIn .4s ease forwards; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+        .hidden { display: none !important; }
+
+        /* ─── Responsive tweaks ──────────────────────────────────── */
+        @media(max-width:640px) {
+            .kpi-value { font-size: 1.5rem; }
+            .topbar-nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ══════════ TOPBAR ══════════ -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="topbar-logo">SLA</div>
+            <div>
+                <div class="topbar-title">Auto SLA</div>
+                <div class="topbar-sub">Dashboard Executivo</div>
+            </div>
+        </div>
+
+        <nav class="topbar-nav">
+            <a href="/index.html" class="nav-link">⚡ Lançamentos</a>
+            <a href="/dashboard.html" class="nav-link active">📊 Dashboard</a>
+        </nav>
+
+        <button id="dash-refresh-btn" class="btn-refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.7-3.7M20 15a9 9 0 01-14.7 3.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Atualizar
+        </button>
+    </header>
+
+    <!-- ══════════ CONTEÚDO ══════════ -->
+    <main class="page-wrapper">
+
+        <!-- Error banner -->
+        <div id="dash-error" class="error-banner hidden"></div>
+
+        <!-- ── Skeleton loading ───────────────────────────────────── -->
+        <div class="dash-skeleton kpi-grid" style="height:120px">
+            <div class="skeleton" style="height:100px"></div>
+            <div class="skeleton" style="height:100px"></div>
+            <div class="skeleton" style="height:100px"></div>
+            <div class="skeleton" style="height:100px"></div>
+            <div class="skeleton" style="height:100px"></div>
+        </div>
+        <div class="dash-skeleton" style="height:320px; border-radius:14px; margin-bottom:1rem"></div>
+        <div class="dash-skeleton" style="height:320px; border-radius:14px;"></div>
+
+        <!-- ── Conteúdo real ────────────────────────────────────────── -->
+        <div class="dash-content hidden">
+
+            <!-- ── KPIs ──────────────────────────────────────────────── -->
+            <div class="section-title" style="margin-bottom:.75rem">Visão Geral</div>
+
+            <div class="kpi-grid fade-in">
+
+                <div class="kpi-card" style="--kpi-color: #6366f1">
+                    <div class="kpi-icon-real">📋</div>
+                    <div class="kpi-label">Total de Ocorrências</div>
+                    <div class="kpi-value" id="kpi-total">–</div>
+                    <div class="kpi-sub">em todos os clientes</div>
+                </div>
+
+                <div class="kpi-card" style="--kpi-color: #06b6d4">
+                    <div class="kpi-icon-real">🏢</div>
+                    <div class="kpi-label">Clientes Ativos</div>
+                    <div class="kpi-value" id="kpi-clientes">–</div>
+                    <div class="kpi-sub">com registros de SLA</div>
+                </div>
+
+                <div class="kpi-card" style="--kpi-color: #10b981">
+                    <div class="kpi-icon-real">📈</div>
+                    <div class="kpi-label">Média por Cliente</div>
+                    <div class="kpi-value" id="kpi-media">–</div>
+                    <div class="kpi-sub">ocorrências / cliente</div>
+                </div>
+
+                <div class="kpi-card" style="--kpi-color: #f59e0b">
+                    <div class="kpi-icon-real">🔥</div>
+                    <div class="kpi-label">Mês de Pico</div>
+                    <div class="kpi-value" id="kpi-mes-pico" style="font-size:1.3rem">–</div>
+                    <div class="kpi-sub" id="kpi-mes-pico-val">–</div>
+                </div>
+
+                <div class="kpi-card" style="--kpi-color: #8b5cf6">
+                    <div class="kpi-icon-real">🏆</div>
+                    <div class="kpi-label">Maior Volume</div>
+                    <div class="kpi-value" id="kpi-top-cliente" style="font-size:1rem; margin-top:.5rem">–</div>
+                    <div class="kpi-sub" id="kpi-top-val">–</div>
+                </div>
+
+            </div>
+
+            <!-- ── Linha + Rosca ──────────────────────────────────────── -->
+            <div class="section-title">Análise Temporal & Distribuição</div>
+
+            <div class="charts-grid-top fade-in" style="animation-delay:.1s">
+                <!-- Linha -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Evolução de Ocorrências (todos os clientes)</span>
+                        <span class="card-badge">Global</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-line"></canvas>
+                    </div>
+                </div>
+
+                <!-- Rosca -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Distribuição por Cliente</span>
+                        <span class="card-badge">Top 10</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-donut"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- ── Barras Horizontais ─────────────────────────────────── -->
+            <div class="section-title">Ranking de Clientes</div>
+
+            <div class="card fade-in" style="animation-delay:.2s; margin-bottom:1rem">
+                <div class="card-header">
+                    <span class="card-title">Top Clientes por Volume de Ocorrências</span>
+                    <span class="card-badge">Top 10</span>
+                </div>
+                <div class="chart-wrap-tall">
+                    <canvas id="chart-bar"></canvas>
+                </div>
+            </div>
+
+            <!-- ── Tabela Ranking Detalhada ───────────────────────────── -->
+            <div class="card fade-in" style="animation-delay:.25s; margin-bottom:1.5rem">
+                <div class="card-header">
+                    <span class="card-title">Tabela de Clientes – Detalhamento Anual</span>
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px">#</th>
+                                <th>Cliente</th>
+                                <th style="width:110px; text-align:center">Ocorrências</th>
+                                <th style="width:200px">Participação</th>
+                                <th>Por Ano</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- ── Heatmap ────────────────────────────────────────────── -->
+            <div class="section-title">Mapa de Calor – Ocorrências por Mês e Cliente</div>
+
+            <div class="card fade-in" style="animation-delay:.3s">
+                <div class="card-header">
+                    <span class="card-title">Intensidade Mensal por Cliente</span>
+                    <div style="display:flex;align-items:center;gap:.6rem">
+                        <span style="font-size:.72rem;color:var(--muted)">Ano:</span>
+                        <select id="heat-year-select" class="dash-select"></select>
+                    </div>
+                </div>
+
+                <!-- Legenda de escala -->
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem">
+                    <span style="font-size:.7rem;color:var(--muted)">Menos</span>
+                    <div style="display:flex;gap:2px">
+                        <div style="width:20px;height:14px;border-radius:3px;background:rgba(30,27,75,.4)"></div>
+                        <div style="width:20px;height:14px;border-radius:3px;background:rgba(99,102,241,.4)"></div>
+                        <div style="width:20px;height:14px;border-radius:3px;background:rgba(139,92,246,.6)"></div>
+                        <div style="width:20px;height:14px;border-radius:3px;background:rgba(239,68,68,.7)"></div>
+                        <div style="width:20px;height:14px;border-radius:3px;background:rgba(239,68,68,.95)"></div>
+                    </div>
+                    <span style="font-size:.7rem;color:var(--muted)">Mais</span>
+                </div>
+
+                <div id="heat-table-wrap">
+                    <p class="text-center" style="color:var(--muted);font-size:.85rem;padding:2rem">Carregando heatmap…</p>
+                </div>
+            </div>
+
+        </div><!-- /dash-content -->
+
+    </main>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
