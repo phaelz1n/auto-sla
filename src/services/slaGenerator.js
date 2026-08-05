@@ -100,7 +100,7 @@ async function gerarSLA(periodo, clientes, rotasMap, tipoExportacao) {
             if (meta >= 99.0) nivel = 'Excelência (Alta Performance)';
             else if (meta >= 97.0) nivel = 'Padrão de Mercado (Saudável)';
 
-            const ocorrenciasDoMes = ocorrenciasList.filter(o => o.data.includes(monthStr));
+            const ocorrenciasDoMes = agrupado[monthStr] || [];
 
             mesesResultados.push({
                 mes: monthStr,
