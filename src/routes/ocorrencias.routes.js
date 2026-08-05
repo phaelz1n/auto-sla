@@ -42,15 +42,22 @@ router.get('/ocorrencias/:cliente_id', async (req, res) => {
     try {
         const snapshot = await db.collection('ocorrencias')
             .where('cliente_id', '==', req.params.cliente_id)
-            .orderBy('created_at', 'asc')
             .get();
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const data = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            // Ordena por created_at em memória (evita precisar de índice composto no Firestore)
+            .sort((a, b) => {
+                const ta = a.created_at?.toMillis?.() ?? 0;
+                const tb = b.created_at?.toMillis?.() ?? 0;
+                return ta - tb;
+            });
         res.json(data);
     } catch (e) {
         console.error('Erro em /ocorrencias/:cliente_id:', e);
         res.status(500).json({ error: e.message });
     }
 });
+
 
 // ─── POST: inserção em lote ───────────────────────────────────────────────────
 router.post('/ocorrencias/lote', async (req, res) => {
