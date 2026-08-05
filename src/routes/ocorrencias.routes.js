@@ -1,16 +1,34 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const db = require('../config/firebase');
+const { FieldPath, FieldValue } = require('firebase-admin/firestore');
 
+// ─── Helper: busca nome do cliente pelo ID ────────────────────────────────────
+async function getClienteNome(cliente_id) {
+    try {
+        const doc = await db.collection('clientes').doc(String(cliente_id)).get();
+        return doc.exists ? doc.data().nome : '';
+    } catch {
+        return '';
+    }
+}
+
+// ─── Helper: prefixo do número de ocorrência ─────────────────────────────────
+const getPrefix = (nome) => {
+    if (!nome) return 'CLI';
+    const clean = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    return clean.substring(0, 5) || 'CLI';
+};
+
+// ─── GET: números existentes de um cliente ───────────────────────────────────
 router.get('/ocorrencias/numeros-atuais/:cliente_id', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
     const { cliente_id } = req.params;
     try {
-        const { data, error } = await supabase
-            .from('ocorrencias')
-            .select('numero_original')
-            .eq('cliente_id', cliente_id);
-        if (error) return res.status(500).json({ error: error.message });
+        const snapshot = await db.collection('ocorrencias')
+            .where('cliente_id', '==', cliente_id)
+            .get();
+        const data = snapshot.docs.map(doc => ({ numero_original: doc.data().numero_original }));
         res.json(data);
     } catch (e) {
         console.error('Erro em numeros-atuais:', e);
@@ -18,16 +36,26 @@ router.get('/ocorrencias/numeros-atuais/:cliente_id', async (req, res) => {
     }
 });
 
+// ─── GET: todas as ocorrências de um cliente ─────────────────────────────────
 router.get('/ocorrencias/:cliente_id', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
-    const { data, error } = await supabase.from('ocorrencias').select('*').eq('cliente_id', req.params.cliente_id).order('created_at', { ascending: true });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
+    try {
+        const snapshot = await db.collection('ocorrencias')
+            .where('cliente_id', '==', req.params.cliente_id)
+            .orderBy('created_at', 'asc')
+            .get();
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(data);
+    } catch (e) {
+        console.error('Erro em /ocorrencias/:cliente_id:', e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
+// ─── POST: inserção em lote ───────────────────────────────────────────────────
 router.post('/ocorrencias/lote', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
-    
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
+
     const { ocorrencias } = req.body;
     if (!ocorrencias || !ocorrencias.length) return res.status(400).json({ error: "Nenhuma ocorrência enviada" });
 
@@ -35,11 +63,15 @@ router.post('/ocorrencias/lote', async (req, res) => {
     if (hasInvalid) return res.status(400).json({ error: "Todas as ocorrências precisam de um cliente associado." });
 
     try {
+        // Busca nomes dos clientes envolvidos
         const clientIdsArray = [...new Set(ocorrencias.map(o => o.cliente_id).filter(id => id))];
-        const { data: clientsData } = await supabase.from('clientes').select('id, nome').in('id', clientIdsArray);
         const clientsMap = {};
-        if (clientsData) {
-            clientsData.forEach(c => clientsMap[c.id] = c.nome);
+        for (let i = 0; i < clientIdsArray.length; i += 30) {
+            const batch = clientIdsArray.slice(i, i + 30);
+            const snap = await db.collection('clientes')
+                .where(FieldPath.documentId(), 'in', batch)
+                .get();
+            snap.docs.forEach(doc => { clientsMap[doc.id] = doc.data().nome; });
         }
 
         const grouped = {};
@@ -50,7 +82,6 @@ router.post('/ocorrencias/lote', async (req, res) => {
                 if (oc.numero_original && !String(oc.numero_original).toUpperCase().startsWith('PERTO-')) {
                     continue;
                 }
-                // Se está vazio ou é o nosso padrão (PERTO-...), deixa o backend gerar a sequência correta
             }
 
             if (!oc.data) continue;
@@ -59,7 +90,7 @@ router.post('/ocorrencias/lote', async (req, res) => {
             const yearStr = match[3];
             const yearShort = yearStr.slice(-2);
             const client = oc.cliente_id;
-            
+
             const key = `${client}_${yearShort}`;
             if (!grouped[key]) {
                 grouped[key] = { client, yearShort, yearStr, items: [] };
@@ -67,34 +98,25 @@ router.post('/ocorrencias/lote', async (req, res) => {
             grouped[key].items.push(oc);
         }
 
-        const getPrefix = (nome) => {
-            if (!nome) return 'CLI';
-            const clean = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-            return clean.substring(0, 5) || 'CLI';
-        };
-
         for (const key of Object.keys(grouped)) {
             const group = grouped[key];
             const nomeCliente = clientsMap[group.client] || '';
             const prefix = getPrefix(nomeCliente);
-            
-            const { data: existingOc, error: searchError } = await supabase
-                .from('ocorrencias')
-                .select('numero_original')
-                .eq('cliente_id', group.client);
-                
+
+            // Busca numerações já existentes para esse cliente
+            const existingSnap = await db.collection('ocorrencias')
+                .where('cliente_id', '==', group.client)
+                .get();
+
             let usedSeqs = new Set();
-            if (!searchError && existingOc) {
-                for (const row of existingOc) {
-                    if (row.numero_original && row.numero_original.endsWith(`/${group.yearShort}`)) {
-                        const m = row.numero_original.match(/(?:.*-)?(\d+)\//);
-                        if (m) {
-                            usedSeqs.add(parseInt(m[1], 10));
-                        }
-                    }
+            existingSnap.docs.forEach(doc => {
+                const row = doc.data();
+                if (row.numero_original && row.numero_original.endsWith(`/${group.yearShort}`)) {
+                    const m = row.numero_original.match(/(?:.*-)?(\d+)\//);
+                    if (m) usedSeqs.add(parseInt(m[1], 10));
                 }
-            }
-            
+            });
+
             group.items.sort((a, b) => {
                 const parseDate = (str) => {
                     const parts = str.split(/[\/\-]/);
@@ -106,17 +128,28 @@ router.post('/ocorrencias/lote', async (req, res) => {
 
             let currentSeqCandidate = 1;
             for (const item of group.items) {
-                while (usedSeqs.has(currentSeqCandidate)) {
-                    currentSeqCandidate++;
-                }
+                while (usedSeqs.has(currentSeqCandidate)) currentSeqCandidate++;
                 usedSeqs.add(currentSeqCandidate);
                 const seqStr = String(currentSeqCandidate).padStart(3, '0');
                 item.numero_original = `${prefix}-${seqStr}/${group.yearShort}`;
             }
         }
 
-        const { error } = await supabase.from('ocorrencias').insert(ocorrencias);
-        if (error) return res.status(500).json({ error: error.message });
+        // Insere em batch no Firestore (máx 500 por batch)
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < ocorrencias.length; i += BATCH_SIZE) {
+            const batch = db.batch();
+            const slice = ocorrencias.slice(i, i + BATCH_SIZE);
+            slice.forEach(oc => {
+                const ref = db.collection('ocorrencias').doc();
+                batch.set(ref, {
+                    ...oc,
+                    created_at: FieldValue.serverTimestamp()
+                });
+            });
+            await batch.commit();
+        }
+
         res.json({ success: true, message: "Ocorrências salvas no banco com sucesso!" });
     } catch (e) {
         console.error(e);
@@ -124,27 +157,22 @@ router.post('/ocorrencias/lote', async (req, res) => {
     }
 });
 
+// ─── POST: regeração de números ───────────────────────────────────────────────
 router.post('/ocorrencias/regerar-numeros', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
     try {
-        const { data: todasOcorrencias, error: fetchError } = await supabase
-            .from('ocorrencias')
-            .select('id, data, cliente_id, numero_original');
-            
-        if (fetchError) throw fetchError;
-        if (!todasOcorrencias || todasOcorrencias.length === 0) {
+        const [ocSnap, clientesSnap] = await Promise.all([
+            db.collection('ocorrencias').get(),
+            db.collection('clientes').get()
+        ]);
+
+        const todasOcorrencias = ocSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (!todasOcorrencias.length) {
             return res.json({ success: true, message: "Nenhuma ocorrência encontrada." });
         }
 
-        const { data: clientesData } = await supabase.from('clientes').select('id, nome');
         const clientesMap = {};
-        if (clientesData) clientesData.forEach(c => clientesMap[c.id] = c.nome);
-
-        const getPrefix = (nome) => {
-            if (!nome) return 'CLI';
-            const clean = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-            return clean.substring(0, 5) || 'CLI';
-        };
+        clientesSnap.docs.forEach(doc => { clientesMap[doc.id] = doc.data().nome; });
 
         const grouped = {};
         for (const oc of todasOcorrencias) {
@@ -154,12 +182,10 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
             const yearStr = match[3];
             const yearShort = yearStr.slice(-2);
             const client = oc.cliente_id;
-            
             if (!client) continue;
 
             const nomeCliente = clientesMap[client] || '';
             if (nomeCliente.toUpperCase().includes('PERTO')) {
-                // Se a ocorrência já possui um número customizado (ex: 062/2026) que não é o nosso padrão, preserva
                 if (oc.numero_original && !String(oc.numero_original).toUpperCase().startsWith('PERTO-')) {
                     continue;
                 }
@@ -177,7 +203,7 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
             const client = group.items[0].cliente_id;
             const nomeCliente = clientesMap[client] || '';
             const prefix = getPrefix(nomeCliente);
-            
+
             group.items.sort((a, b) => {
                 const parseDate = (str) => {
                     const parts = str.split(/[\/\-]/);
@@ -185,7 +211,7 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
                     return 0;
                 };
                 const diff = parseDate(a.data) - parseDate(b.data);
-                if (diff === 0) return a.id - b.id;
+                if (diff === 0) return (a.id > b.id ? 1 : -1);
                 return diff;
             });
 
@@ -200,27 +226,29 @@ router.post('/ocorrencias/regerar-numeros', async (req, res) => {
             }
         }
 
-        let updatedCount = 0;
-        for (const up of updates) {
-            await supabase.from('ocorrencias').update({ numero_original: up.numero_original }).eq('id', up.id);
-            updatedCount++;
+        // Atualiza em batches
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+            const batch = db.batch();
+            updates.slice(i, i + BATCH_SIZE).forEach(up => {
+                const ref = db.collection('ocorrencias').doc(up.id);
+                batch.update(ref, { numero_original: up.numero_original });
+            });
+            await batch.commit();
         }
 
-        res.json({ success: true, message: `Numeração regerada com sucesso para ${updatedCount} ocorrências.` });
+        res.json({ success: true, message: `Numeração regerada com sucesso para ${updates.length} ocorrências.` });
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
 
+// ─── DELETE: deletar ocorrência ───────────────────────────────────────────────
 router.delete('/ocorrencias/:id', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
     try {
-        const { error } = await supabase
-            .from('ocorrencias')
-            .delete()
-            .eq('id', req.params.id);
-        if (error) throw error;
+        await db.collection('ocorrencias').doc(req.params.id).delete();
         res.json({ success: true });
     } catch (err) {
         console.error("Erro ao deletar:", err);

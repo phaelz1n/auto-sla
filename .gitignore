@@ -3,3 +3,4 @@ output/
 uploads/
 template_sla.docx
 .env
+firebase-service-account.json

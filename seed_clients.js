@@ -1,7 +1,16 @@
 require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
+const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const serviceAccountPath = path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT || './firebase-service-account.json');
+if (!fs.existsSync(serviceAccountPath)) {
+    console.error(`\n❌ ERRO: Arquivo de credenciais não encontrado: ${serviceAccountPath}`);
+    process.exit(1);
+}
+
+admin.initializeApp({ credential: admin.credential.cert(require(serviceAccountPath)) });
+const db = admin.firestore();
 
 const clientes = [
     "AIVA", "CONTROIL", "DARCY PACHECO", "DROGA RAIA", "FIBRAPLAC",
@@ -12,30 +21,27 @@ const clientes = [
 ];
 
 async function seed() {
-    console.log("Checando tabela de clientes...");
-    
-    // Testa se a tabela existe
-    const { error: testError } = await supabase.from('clientes').select('id').limit(1);
-    if (testError) {
-        console.error("ERRO: A tabela não existe. Você executou o database_setup.sql no Supabase?");
-        console.error(testError);
-        return;
+    console.log("Inserindo clientes no Firestore...");
+
+    const batch = db.batch();
+    for (const nome of clientes) {
+        // Verifica se já existe
+        const snapshot = await db.collection('clientes').where('nome', '==', nome).limit(1).get();
+        if (!snapshot.empty) {
+            console.log(`Cliente ${nome} já existe. Pulando...`);
+            continue;
+        }
+        const ref = db.collection('clientes').doc();
+        batch.set(ref, { nome });
+        console.log(`Adicionado: ${nome}`);
     }
 
-    console.log("Inserindo clientes...");
-    for (const nome of clientes) {
-        const { data, error } = await supabase.from('clientes').insert([{ nome }]).select();
-        if (error) {
-            if (error.code === '23505') { // Unique violation
-                console.log(`Cliente ${nome} já existe. Pulando...`);
-            } else {
-                console.error(`Erro ao inserir ${nome}:`, error.message);
-            }
-        } else {
-            console.log(`Cliente ${nome} inserido com sucesso!`);
-        }
-    }
-    console.log("Processo finalizado.");
+    await batch.commit();
+    console.log("\n✅ Processo finalizado.");
+    process.exit(0);
 }
 
-seed();
+seed().catch(e => {
+    console.error("Erro:", e.message);
+    process.exit(1);
+});

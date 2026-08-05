@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const db = require('../config/firebase');
+const { FieldPath } = require('firebase-admin/firestore');
 
 router.get('/clientes', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
     try {
-        const { data, error } = await supabase.from('clientes').select('*').order('nome', { ascending: true });
-        if (error) return res.status(500).json({ error: error.message });
+        const snapshot = await db.collection('clientes').orderBy('nome', 'asc').get();
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.json(data);
     } catch (e) {
         console.error('Erro no /api/clientes:', e);
@@ -15,32 +16,50 @@ router.get('/clientes', async (req, res) => {
 });
 
 router.get('/clientes-com-ocorrencias', async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase não configurado no .env" });
-    const { periodo } = req.query; 
+    if (!db) return res.status(500).json({ error: "Firebase não configurado. Adicione firebase-service-account.json" });
+    const { periodo } = req.query;
     if (!periodo) return res.status(400).json({ error: "Período é obrigatório" });
 
     try {
-        const { data, error } = await supabase
-            .from('ocorrencias')
-            .select('cliente_id, clientes(nome)')
-            .like('data', `%${periodo}%`);
-            
-        if (error) return res.status(500).json({ error: error.message });
+        // Busca todas as ocorrências cujo campo 'data' contém o período (ex: "2026-01")
+        const snapshot = await db.collection('ocorrencias')
+            .where('data', '>=', periodo)
+            .get();
 
+        // Filtra no lado do servidor (Firestore não tem LIKE, usamos contains manual)
+        const docs = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(oc => oc.data && oc.data.includes(periodo));
+
+        // Busca nomes dos clientes
+        const clienteIds = [...new Set(docs.map(oc => oc.cliente_id).filter(Boolean))];
         const clientesMap = {};
-        data.forEach(oc => {
+
+        // Busca em lotes de até 30 (limite do Firestore para 'in')
+        for (let i = 0; i < clienteIds.length; i += 30) {
+            const batch = clienteIds.slice(i, i + 30);
+            const clienteSnap = await db.collection('clientes')
+                .where(FieldPath.documentId(), 'in', batch)
+                .get();
+            clienteSnap.docs.forEach(doc => {
+                clientesMap[doc.id] = doc.data().nome;
+            });
+        }
+
+        const result = {};
+        docs.forEach(oc => {
             const cId = oc.cliente_id;
-            if (!clientesMap[cId]) {
-                clientesMap[cId] = {
+            if (!result[cId]) {
+                result[cId] = {
                     id: cId,
-                    nome: oc.clientes.nome,
+                    nome: clientesMap[cId] || cId,
                     ocorrencias_count: 0
                 };
             }
-            clientesMap[cId].ocorrencias_count++;
+            result[cId].ocorrencias_count++;
         });
-        
-        res.json(Object.values(clientesMap).sort((a,b) => a.nome.localeCompare(b.nome)));
+
+        res.json(Object.values(result).sort((a, b) => a.nome.localeCompare(b.nome)));
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
