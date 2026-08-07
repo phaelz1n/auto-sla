@@ -138,76 +138,84 @@ window.gerarSlaCliente = async function(e) {
 
     const pIni = document.getElementById('periodo_inicial').value;
     const pFim = document.getElementById('periodo_final').value || pIni;
-    
+
     if (!pIni) {
         window.showToast("Selecione o Período Inicial.", "warning");
         return;
     }
 
-    const periodo = (pIni === pFim) ? pIni : `${pIni}-${pFim}`;
+    const periodo    = (pIni === pFim) ? pIni : `${pIni}-${pFim}`;
     const exportType = document.getElementById('tipo_exportacao_gerar').value;
-    
-    const metasInputs = document.querySelectorAll('.input-meta-rota');
+
+    const metasInputs  = document.querySelectorAll('.input-meta-rota');
     const metasMensais = {};
     metasInputs.forEach(input => {
         metasMensais[input.getAttribute('data-mes')] = parseInt(input.value) || 0;
     });
 
-    const clientesListPayload = [cliente_id];
     const rotasMap = { [cliente_id]: metasMensais };
 
-    const payload = {
-        periodo: periodo,
-        clientes: JSON.stringify(clientesListPayload),
-        rotas: JSON.stringify(rotasMap),
-        tipo_exportacao: exportType
-    };
-
-    const btn = document.getElementById('gerarBtn');
+    const btn          = document.getElementById('gerarBtn');
     const originalText = btn.innerHTML;
-    btn.innerHTML = 'Baixando...';
-    btn.disabled = true;
+    btn.innerHTML = '⏳ Gerando...';
+    btn.disabled  = true;
     btn.classList.add('opacity-75', 'cursor-not-allowed');
 
     try {
-        const response = await fetch('/api/gerar-sla-novo', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        if (exportType !== 'template') {
+            /* ── Modo HTML: abre em nova aba ───────────────── */
+            const params = new URLSearchParams({
+                cliente_id,
+                periodo,
+                rotas: JSON.stringify(rotasMap[cliente_id] || {})
+            });
+            window.open('/api/visualizar-sla?' + params.toString(), '_blank');
 
-        if (response.ok) {
-            let filename = 'SLA_Gerado.docx';
-            const disposition = response.headers.get('content-disposition');
-            if (disposition && disposition.indexOf('attachment') !== -1) {
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                const matches = filenameRegex.exec(disposition);
-                if (matches != null && matches[1]) { 
-                    filename = matches[1].replace(/['"]/g, '');
-                }
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
         } else {
-            const err = await response.text();
-            window.showToast("Erro ao gerar documento: " + err, "error");
+            /* ── Modo legado: baixa o .docx ────────────────── */
+            const payload = {
+                periodo,
+                clientes: JSON.stringify([cliente_id]),
+                rotas:    JSON.stringify(rotasMap),
+                tipo_exportacao: 'template'
+            };
+
+            const response = await fetch('/api/gerar-sla-novo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                let filename = 'SLA_Gerado.docx';
+                const disposition = response.headers.get('content-disposition');
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) {
+                        filename = matches[1].replace(/['"]/g, '');
+                    }
+                }
+                const blob = await response.blob();
+                const url  = window.URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const err = await response.text();
+                window.showToast("Erro ao gerar documento: " + err, "error");
+            }
         }
+
     } catch (error) {
         console.error(error);
         window.showToast("Erro de conexão ao gerar SLA.", "error");
     } finally {
         btn.innerHTML = originalText;
-        btn.disabled = false;
+        btn.disabled  = false;
         btn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
 };
+

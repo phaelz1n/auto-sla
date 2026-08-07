@@ -1,11 +1,32 @@
 const express = require('express');
 const router  = express.Router();
 const { gerarSLA, gerarSLAAutomatizado } = require('../services/slaGenerator');
+const { gerarSLAHtml }                   = require('../services/slaHtmlGenerator');
+
+/**
+ * GET /api/visualizar-sla
+ * Retorna um HTML completo e pronto para impressão/PDF.
+ * Query params: cliente_id, periodo, rotas (JSON string)
+ */
+router.get('/visualizar-sla', async (req, res) => {
+    try {
+        const { cliente_id, periodo, rotas } = req.query;
+        if (!cliente_id || !periodo) {
+            return res.status(400).send('Parâmetros cliente_id e periodo são obrigatórios.');
+        }
+        const rotasMap = rotas ? JSON.parse(decodeURIComponent(rotas)) : {};
+        const html = await gerarSLAHtml(cliente_id, periodo, rotasMap);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (error) {
+        console.error('Erro ao gerar visualização SLA:', error);
+        res.status(500).send('<h2>Erro ao gerar o relatório: ' + error.message + '</h2>');
+    }
+});
 
 /**
  * POST /api/gerar-sla-novo
- *
- * Usa o gerador automatizado por padrao (sem depender do template .docx).
+ * Usa o gerador automatizado por padrão (sem depender do template .docx).
  * Passe tipo_exportacao = "template" para usar o gerador legado via docxtemplater.
  */
 router.post('/gerar-sla-novo', async (req, res) => {
@@ -13,12 +34,9 @@ router.post('/gerar-sla-novo', async (req, res) => {
         const { periodo, clientes, rotas, tipo_exportacao } = req.body;
 
         let result;
-
         if (tipo_exportacao === 'template') {
-            // Modo legado: usa o arquivo template_geral.docx ou template_mensal.docx
             result = await gerarSLA(periodo, clientes, rotas, 'geral');
         } else {
-            // Modo automatizado: gera o DOCX inteiramente em codigo
             const clientesList = JSON.parse(clientes);
             const rotasMap     = typeof rotas === 'string' ? JSON.parse(rotas) : rotas;
             result = await gerarSLAAutomatizado(periodo, clientesList, rotasMap);
