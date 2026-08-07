@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/phaelz1n/auto-sla#readme",
   "dependencies": {
+    "docx": "^9.7.1",
     "docxtemplater": "^3.68.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

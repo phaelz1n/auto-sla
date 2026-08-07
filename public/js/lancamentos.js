@@ -12,7 +12,7 @@ window.sortOcorrencias = function() {
 
 window.addOcorrencia = function() {
     const id = Date.now();
-    window.ocorrenciasData.push({ id, numero: '', data: '', descricao: '', status: '', cliente_id: '' });
+    window.ocorrenciasData.push({ id, numero: '', data: '', descricao: '', status: '', cliente_id: '', culpado: '' });
     window.sortOcorrencias();
     window.renderOcorrencias();
 };
@@ -149,6 +149,17 @@ window.renderOcorrencias = function() {
                     <label class="block text-xs font-medium text-gray-500 mb-1">Status / Resolução</label>
                     <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.status}</textarea>
                 </div>
+
+                <div class="sm:col-span-12 md:col-span-12">
+                    <label class="block text-xs font-bold text-orange-600 mb-1">⚠️ Responsável pela Ocorrência</label>
+                    <select onchange="updateOcorrencia(${oc.id}, 'culpado', this.value)" class="w-full px-3 py-1.5 border border-orange-300 rounded text-sm focus:ring-orange-500 focus:border-orange-500">
+                        <option value="" ${!oc.culpado ? 'selected' : ''}>-- Selecione o Responsável --</option>
+                        <option value="operacional" ${oc.culpado === 'operacional' ? 'selected' : ''}>🔧 Setor Operacional</option>
+                        <option value="motorista"   ${oc.culpado === 'motorista'   ? 'selected' : ''}>🚗 Motorista</option>
+                        <option value="oficina"     ${oc.culpado === 'oficina'     ? 'selected' : ''}>🏭 Oficina</option>
+                        <option value="cliente"     ${oc.culpado === 'cliente'     ? 'selected' : ''}>👤 Erro do Cliente</option>
+                    </select>
+                </div>
             </div>
         `;
         list.appendChild(row);
@@ -177,7 +188,8 @@ window.salvarNoBanco = async function() {
         numero_original: o.numero,
         data: o.data,
         descricao: o.descricao,
-        status: o.status
+        status: o.status,
+        culpado: o.culpado || ''
     }));
 
     try {

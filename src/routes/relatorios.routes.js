@@ -1,13 +1,29 @@
 const express = require('express');
-const router = express.Router();
-const { gerarSLA } = require('../services/slaGenerator');
+const router  = express.Router();
+const { gerarSLA, gerarSLAAutomatizado } = require('../services/slaGenerator');
 
+/**
+ * POST /api/gerar-sla-novo
+ *
+ * Usa o gerador automatizado por padrao (sem depender do template .docx).
+ * Passe tipo_exportacao = "template" para usar o gerador legado via docxtemplater.
+ */
 router.post('/gerar-sla-novo', async (req, res) => {
     try {
         const { periodo, clientes, rotas, tipo_exportacao } = req.body;
-        
-        const result = await gerarSLA(periodo, clientes, rotas, tipo_exportacao);
-        
+
+        let result;
+
+        if (tipo_exportacao === 'template') {
+            // Modo legado: usa o arquivo template_geral.docx ou template_mensal.docx
+            result = await gerarSLA(periodo, clientes, rotas, 'geral');
+        } else {
+            // Modo automatizado: gera o DOCX inteiramente em codigo
+            const clientesList = JSON.parse(clientes);
+            const rotasMap     = typeof rotas === 'string' ? JSON.parse(rotas) : rotas;
+            result = await gerarSLAAutomatizado(periodo, clientesList, rotasMap);
+        }
+
         if (!result.isZip) {
             res.setHeader('Content-Disposition', 'attachment; filename="SLA_Gerado.docx"');
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');

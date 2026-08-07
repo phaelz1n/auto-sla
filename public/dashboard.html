@@ -28,6 +28,7 @@
             --emerald:   #10b981;
             --amber:     #f59e0b;
             --rose:      #f43f5e;
+            --orange:    #f97316;
             --text:      #f1f5f9;
             --muted:     #94a3b8;
             --radius:    14px;
@@ -57,11 +58,10 @@
             padding: 0 1.5rem;
             height: 60px;
             display: flex; align-items: center; justify-content: space-between;
+            gap: 1rem;
         }
 
-        .topbar-brand {
-            display: flex; align-items: center; gap: .75rem;
-        }
+        .topbar-brand { display: flex; align-items: center; gap: .75rem; }
         .topbar-logo {
             width: 34px; height: 34px;
             background: linear-gradient(135deg, var(--indigo), var(--violet));
@@ -72,6 +72,7 @@
         .topbar-title { font-weight: 700; font-size: 1rem; color: var(--text); }
         .topbar-sub   { font-size: .72rem; color: var(--muted); margin-top: 1px; }
 
+        .topbar-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
         .topbar-nav { display: flex; align-items: center; gap: .5rem; }
         .nav-link {
             display: flex; align-items: center; justify-content: center; gap: 0.25rem;
@@ -96,7 +97,7 @@
             background: linear-gradient(to bottom, var(--indigo), var(--violet));
         }
 
-        /* ─── Botão de refresh ───────────────────────────────────── */
+        /* ─── Botões ─────────────────────────────────────────────── */
         .btn-refresh {
             display: flex; align-items: center; gap: .5rem;
             padding: .5rem 1.1rem; border-radius: 9px;
@@ -109,6 +110,50 @@
         .btn-refresh:hover { opacity: .88; transform: translateY(-1px); }
         .btn-refresh:active { transform: scale(.97); }
         .btn-refresh svg { width: 15px; height: 15px; }
+
+        .btn-pdf {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .5rem 1.1rem; border-radius: 9px;
+            background: linear-gradient(135deg, var(--rose), #be123c);
+            color: #fff; font-weight: 600; font-size: .82rem;
+            border: none; cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            box-shadow: 0 4px 15px rgba(244,63,94,.35);
+        }
+        .btn-pdf:hover { opacity: .88; transform: translateY(-1px); }
+        .btn-pdf svg { width: 15px; height: 15px; }
+
+        /* ─── Filtros ─────────────────────────────────────────────── */
+        .filter-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 160px; }
+        .filter-label { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+        .filter-badge {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .2rem .7rem; border-radius: 99px; font-size: .72rem; font-weight: 600;
+            background: rgba(99,102,241,.15); color: var(--indigo);
+            border: 1px solid rgba(99,102,241,.3);
+        }
+        .btn-filter-apply {
+            padding: .5rem 1.2rem; border-radius: 9px;
+            background: var(--indigo); color: #fff;
+            font-weight: 600; font-size: .82rem; border: none; cursor: pointer;
+            transition: opacity .2s; white-space: nowrap;
+        }
+        .btn-filter-apply:hover { opacity: .85; }
+        .btn-filter-clear {
+            padding: .5rem 1.2rem; border-radius: 9px;
+            background: var(--surface-2); color: var(--muted);
+            font-weight: 600; font-size: .82rem; border: 1px solid var(--border); cursor: pointer;
+            transition: opacity .2s; white-space: nowrap;
+        }
+        .btn-filter-clear:hover { opacity: .75; }
 
         /* ─── KPI Grid ───────────────────────────────────────────── */
         .kpi-grid {
@@ -151,7 +196,7 @@
         .kpi-value { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; margin: .4rem 0 .2rem; }
         .kpi-sub   { font-size: .75rem; color: var(--muted); }
 
-        /* ─── Card genérico ──────────────────────────────────────── */
+        /* ─── Card generico ──────────────────────────────────────── */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -181,14 +226,30 @@
             .charts-grid-top { grid-template-columns: 2fr 1fr; }
         }
 
+        .charts-grid-culpa {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media(min-width:900px) {
+            .charts-grid-culpa { grid-template-columns: 1fr 1fr; }
+        }
+
         .chart-wrap { position: relative; width: 100%; height: 280px; }
         .chart-wrap-tall { position: relative; width: 100%; height: 340px; }
+        .chart-wrap-stacked { position: relative; width: 100%; height: 300px; }
+
+        /* ─── Culpa KPI grid ──────────────────────────────────────── */
+        .culpa-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: .75rem;
+            margin-bottom: 1.25rem;
+        }
 
         /* ─── Heatmap ────────────────────────────────────────────── */
-        #heat-table-wrap {
-            overflow-x: auto;
-            border-radius: 8px;
-        }
+        #heat-table-wrap { overflow-x: auto; border-radius: 8px; }
 
         .heat-table { border-collapse: separate; border-spacing: 2px; }
         .heat-table th.heat-th {
@@ -196,8 +257,7 @@
             position: sticky; top: 0; z-index: 5;
             padding: .5rem .6rem;
             font-size: .7rem; letter-spacing: .05em;
-            text-transform: uppercase;
-            white-space: nowrap;
+            text-transform: uppercase; white-space: nowrap;
         }
         .heat-table td { border-radius: 5px; transition: transform .15s; }
         .heat-table td:hover { transform: scale(1.2); z-index: 5; position: relative; }
@@ -219,8 +279,17 @@
         }
         .dash-select:focus { border-color: var(--indigo); }
 
+        /* Input para filtros */
+        .dash-input {
+            background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--text); font-size: .8rem; padding: .4rem .75rem;
+            border-radius: 8px; outline: none; width: 100%;
+        }
+        .dash-input:focus { border-color: var(--indigo); box-shadow: 0 0 0 2px rgba(99,102,241,.2); }
+        .dash-input::placeholder { color: var(--muted); }
+
         /* ─── Skeleton ───────────────────────────────────────────── */
-        .skeleton { 
+        .skeleton {
             background: linear-gradient(90deg, var(--surface), var(--surface-2), var(--surface));
             background-size: 200%;
             animation: shimmer 1.5s infinite;
@@ -247,7 +316,29 @@
         /* ─── Responsive tweaks ──────────────────────────────────── */
         @media(max-width:640px) {
             .kpi-value { font-size: 1.5rem; }
-            .topbar-nav { display: none; }
+            .topbar-actions { display: none; }
+        }
+
+        /* ─── Print / PDF ────────────────────────────────────────── */
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            .topbar, .filter-bar, .btn-pdf, .btn-refresh, .no-print { display: none !important; }
+            .page-wrapper { padding: 0; max-width: 100%; }
+            .card, .kpi-card {
+                background: #fff !important;
+                border: 1px solid #ddd !important;
+                break-inside: avoid;
+                box-shadow: none !important;
+            }
+            .kpi-grid { grid-template-columns: repeat(5, 1fr); }
+            .charts-grid-top,
+            .charts-grid-culpa { grid-template-columns: 1fr 1fr; }
+            .section-title { color: #1e293b !important; }
+            .kpi-label, .kpi-sub, .card-title, .muted { color: #64748b !important; }
+            .kpi-value { color: #0f172a !important; }
+            canvas { max-width: 100%; }
+            .ranking-table th { color: #64748b !important; }
+            .ranking-table td { color: #0f172a !important; }
         }
     </style>
 </head>
@@ -263,27 +354,37 @@
             </div>
         </div>
 
-        <nav class="topbar-nav">
-            <a href="/index.html" class="nav-link">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 15px; height: 15px;">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
-                <span>Lançamentos</span>
-            </a>
-            <a href="/dashboard.html" class="nav-link active">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 15px; height: 15px;">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-                <span>Dashboard</span>
-            </a>
-        </nav>
+        <div class="topbar-actions">
+            <nav class="topbar-nav">
+                <a href="/index.html" class="nav-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 15px; height: 15px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                    <span>Lançamentos</span>
+                </a>
+                <a href="/dashboard.html" class="nav-link active">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 15px; height: 15px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+            </nav>
 
-        <button id="dash-refresh-btn" class="btn-refresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.7-3.7M20 15a9 9 0 01-14.7 3.7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Atualizar
-        </button>
+            <button id="dash-refresh-btn" class="btn-refresh no-print">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.7-3.7M20 15a9 9 0 01-14.7 3.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Atualizar
+            </button>
+
+            <button id="btn-export-pdf" class="btn-pdf no-print" onclick="window.print()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 21h10a2 2 0 002-2V9l-5-5H7a2 2 0 00-2 2v13a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M14 3v5a1 1 0 001 1h5M9 12h6M9 16h6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Exportar PDF
+            </button>
+        </div>
     </header>
 
     <!-- ══════════ CONTEÚDO ══════════ -->
@@ -305,6 +406,34 @@
 
         <!-- ── Conteúdo real ────────────────────────────────────────── -->
         <div class="dash-content hidden">
+
+            <!-- ── Barra de Filtros ──────────────────────────────────── -->
+            <div class="filter-bar no-print">
+                <div style="flex:0 0 auto">
+                    <div class="filter-label" style="margin-bottom:.5rem">Filtros Ativos</div>
+                    <div id="filtros-ativos" style="font-size:.78rem;color:var(--muted)">Nenhum filtro aplicado</div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-cliente">Cliente</label>
+                    <select id="filter-cliente" class="dash-select">
+                        <option value="">Todos os clientes</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-inicio">Período Inicial</label>
+                    <input id="filter-inicio" type="text" class="dash-input" placeholder="MM/AAAA" maxlength="7">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-fim">Período Final</label>
+                    <input id="filter-fim" type="text" class="dash-input" placeholder="MM/AAAA" maxlength="7">
+                </div>
+
+                <button class="btn-filter-apply" onclick="applyFilters()">Aplicar Filtros</button>
+                <button class="btn-filter-clear" onclick="clearFilters()">Limpar</button>
+            </div>
 
             <!-- ── KPIs ──────────────────────────────────────────────── -->
             <div class="section-title" style="margin-bottom:.75rem">Visão Geral</div>
@@ -349,7 +478,7 @@
             </div>
 
             <!-- ── Linha + Rosca ──────────────────────────────────────── -->
-            <div class="section-title">Análise Temporal & Distribuição</div>
+            <div class="section-title">Análise Temporal &amp; Distribuição</div>
 
             <div class="charts-grid-top fade-in" style="animation-delay:.1s">
                 <!-- Linha -->
@@ -371,6 +500,67 @@
                     </div>
                     <div class="chart-wrap">
                         <canvas id="chart-donut"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- ══════════ SEÇÃO: CULPABILIDADE ══════════ -->
+            <div class="section-title">Responsabilidade pelas Ocorrências</div>
+
+            <!-- KPIs de culpa -->
+            <div class="culpa-kpi-grid fade-in" style="animation-delay:.15s">
+                <div class="kpi-card" style="--kpi-color: #f97316">
+                    <div class="kpi-icon-real">🔧</div>
+                    <div class="kpi-label">Setor Operacional</div>
+                    <div class="kpi-value" id="kpi-culpa-operacional">–</div>
+                    <div class="kpi-sub" id="kpi-culpa-operacional-pct">–</div>
+                </div>
+                <div class="kpi-card" style="--kpi-color: #06b6d4">
+                    <div class="kpi-icon-real">🚗</div>
+                    <div class="kpi-label">Motorista</div>
+                    <div class="kpi-value" id="kpi-culpa-motorista">–</div>
+                    <div class="kpi-sub" id="kpi-culpa-motorista-pct">–</div>
+                </div>
+                <div class="kpi-card" style="--kpi-color: #8b5cf6">
+                    <div class="kpi-icon-real">🏭</div>
+                    <div class="kpi-label">Oficina</div>
+                    <div class="kpi-value" id="kpi-culpa-oficina">–</div>
+                    <div class="kpi-sub" id="kpi-culpa-oficina-pct">–</div>
+                </div>
+                <div class="kpi-card" style="--kpi-color: #10b981">
+                    <div class="kpi-icon-real">👤</div>
+                    <div class="kpi-label">Erro do Cliente</div>
+                    <div class="kpi-value" id="kpi-culpa-cliente">–</div>
+                    <div class="kpi-sub" id="kpi-culpa-cliente-pct">–</div>
+                </div>
+                <div class="kpi-card" style="--kpi-color: #94a3b8">
+                    <div class="kpi-icon-real">❓</div>
+                    <div class="kpi-label">Sem Informação</div>
+                    <div class="kpi-value" id="kpi-culpa-sem">–</div>
+                    <div class="kpi-sub" id="kpi-culpa-sem-pct">–</div>
+                </div>
+            </div>
+
+            <!-- Gráficos de culpabilidade -->
+            <div class="charts-grid-culpa fade-in" style="animation-delay:.2s; margin-bottom:1rem">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Distribuição por Responsável</span>
+                        <span class="card-badge">Rosca</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-culpa-donut"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Evolução Mensal por Responsável</span>
+                        <span class="card-badge">Barras</span>
+                    </div>
+                    <div class="chart-wrap-stacked">
+                        <canvas id="chart-culpa-stacked"></canvas>
                     </div>
                 </div>
             </div>
@@ -419,7 +609,7 @@
             <div class="card fade-in" style="animation-delay:.3s">
                 <div class="card-header">
                     <span class="card-title">Intensidade Mensal por Cliente</span>
-                    <div style="display:flex;align-items:center;gap:.6rem">
+                    <div style="display:flex;align-items:center;gap:.6rem" class="no-print">
                         <span style="font-size:.72rem;color:var(--muted)">Ano:</span>
                         <select id="heat-year-select" class="dash-select"></select>
                     </div>
