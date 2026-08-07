@@ -321,24 +321,110 @@
 
         /* ─── Print / PDF ────────────────────────────────────────── */
         @media print {
-            body { background: #fff !important; color: #000 !important; }
-            .topbar, .filter-bar, .btn-pdf, .btn-refresh, .no-print { display: none !important; }
-            .page-wrapper { padding: 0; max-width: 100%; }
-            .card, .kpi-card {
-                background: #fff !important;
-                border: 1px solid #ddd !important;
-                break-inside: avoid;
-                box-shadow: none !important;
+            /* Forcar tamanho A4 e margens corretas */
+            @page {
+                size: A4 portrait;
+                margin: 15mm 12mm;
             }
-            .kpi-grid { grid-template-columns: repeat(5, 1fr); }
+
+            /* Reset geral de cores — tudo branco/preto */
+            *, *::before, *::after {
+                background: #fff !important;
+                color: #111 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Ocultar elementos de UI */
+            .topbar,
+            .filter-bar,
+            .btn-pdf,
+            .btn-refresh,
+            .no-print,
+            #heat-year-select,
+            .dash-select,
+            .divider { display: none !important; }
+
+            /* Layout da página */
+            html, body { background: #fff !important; }
+            .page-wrapper {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Cards */
+            .card, .kpi-card {
+                border: 1px solid #ccc !important;
+                border-radius: 6px !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin-bottom: .6rem !important;
+            }
+
+            /* Barra de cor dos KPI cards — manter visível */
+            .kpi-card::after {
+                background: #555 !important;
+            }
+
+            /* Grids */
+            .kpi-grid {
+                display: grid !important;
+                grid-template-columns: repeat(5, 1fr) !important;
+                gap: .5rem !important;
+            }
+            .culpa-kpi-grid {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: .5rem !important;
+            }
             .charts-grid-top,
-            .charts-grid-culpa { grid-template-columns: 1fr 1fr; }
-            .section-title { color: #1e293b !important; }
-            .kpi-label, .kpi-sub, .card-title, .muted { color: #64748b !important; }
-            .kpi-value { color: #0f172a !important; }
-            canvas { max-width: 100%; }
-            .ranking-table th { color: #64748b !important; }
-            .ranking-table td { color: #0f172a !important; }
+            .charts-grid-culpa {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: .8rem !important;
+            }
+
+            /* Tipografia */
+            .section-title,
+            .card-title,
+            .kpi-label,
+            .kpi-value,
+            .kpi-sub,
+            .topbar-title,
+            .muted { color: #111 !important; }
+
+            .section-title::before {
+                background: #555 !important;
+            }
+
+            /* Tabelas */
+            .ranking-table th { color: #444 !important; border-color: #ccc !important; }
+            .ranking-table td { color: #111 !important; }
+            .heat-table td { border-radius: 3px !important; }
+
+            /* Canvas dos gráficos */
+            canvas {
+                background: #fff !important;
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            .chart-wrap,
+            .chart-wrap-tall,
+            .chart-wrap-stacked {
+                background: #fff !important;
+                height: 220px !important;
+            }
+
+            /* Manter seções juntas quando possível */
+            section, .card {
+                page-break-inside: avoid;
+            }
+
+            /* Erro banner — ocultar */
+            .error-banner { display: none !important; }
         }
     </style>
 </head>
