@@ -13,6 +13,25 @@ window.deletarOcorrencia = async function(id) {
     }
 };
 
+window.atualizarCulpado = async function(id, culpado) {
+    try {
+        const res = await fetch(`/api/ocorrencias/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ culpado: culpado })
+        });
+        if (res.ok) {
+            window.showToast("Responsável atualizado com sucesso!", "success");
+            if (window.atualizarDashboard) window.atualizarDashboard(); // Optional: if dashboard needs refresh
+        } else {
+            const err = await res.json();
+            window.showToast("Erro ao atualizar: " + err.error, "error");
+        }
+    } catch (err) {
+        window.showToast("Erro de conexão.", "error");
+    }
+};
+
 window.buscarOcorrenciasCliente = async function(cliente_id) {
     const divResultado = document.getElementById('resultadoOcorrenciasCliente');
     const divVazia = document.getElementById('buscaVazia');
@@ -69,6 +88,16 @@ window.buscarOcorrenciasCliente = async function(cliente_id) {
                         </div>
                         <div class="text-gray-800 mb-1 text-sm"><strong>Descrição:</strong> ${oc.descricao}</div>
                         <div class="text-gray-600 text-sm"><strong>Resolução:</strong> ${oc.status}</div>
+                        <div class="mt-2">
+                            <label class="block text-xs font-bold text-orange-600 mb-1">Responsável:</label>
+                            <select onchange="atualizarCulpado('${oc.id}', this.value)" class="w-full px-2 py-1 border border-orange-300 rounded text-xs focus:ring-orange-500 focus:border-orange-500 bg-white text-gray-900">
+                                <option value="" ${!oc.culpado ? 'selected' : ''}>-- Selecione --</option>
+                                <option value="operacional" ${oc.culpado === 'operacional' ? 'selected' : ''}>🔧 Setor Operacional</option>
+                                <option value="motorista"   ${oc.culpado === 'motorista'   ? 'selected' : ''}>🚗 Motorista</option>
+                                <option value="oficina"     ${oc.culpado === 'oficina'     ? 'selected' : ''}>🏭 Oficina</option>
+                                <option value="cliente"     ${oc.culpado === 'cliente'     ? 'selected' : ''}>👤 Erro do Cliente</option>
+                            </select>
+                        </div>
                     </div>
                 `).join('');
 

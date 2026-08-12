@@ -125,7 +125,7 @@ window.renderOcorrencias = function() {
                 
                 <div class="sm:col-span-12 md:col-span-5">
                     <label class="block text-xs font-bold ${!oc.cliente_id ? 'text-red-600' : 'text-blue-600'} mb-1">Empresa / Cliente *</label>
-                    <select onchange="updateOcorrencia(${oc.id}, 'cliente_id', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                    <select onchange="updateOcorrencia(${oc.id}, 'cliente_id', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900">
                         ${selectHtml}
                     </select>
                 </div>
@@ -137,22 +137,22 @@ window.renderOcorrencias = function() {
                 
                 <div class="sm:col-span-8 md:col-span-5">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Data</label>
-                    <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="Ex: 19/05/2026" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">
+                    <input type="text" value="${oc.data}" onchange="updateOcorrencia(${oc.id}, 'data', this.value)" placeholder="Ex: 19/05/2026" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900">
                 </div>
 
                 <div class="sm:col-span-12 md:col-span-6">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Descrição</label>
-                    <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.descricao}</textarea>
+                    <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'descricao', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900">${oc.descricao}</textarea>
                 </div>
 
                 <div class="sm:col-span-12 md:col-span-6">
                     <label class="block text-xs font-medium text-gray-500 mb-1">Status / Resolução</label>
-                    <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500">${oc.status}</textarea>
+                    <textarea rows="3" onchange="updateOcorrencia(${oc.id}, 'status', this.value)" class="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900">${oc.status}</textarea>
                 </div>
 
                 <div class="sm:col-span-12 md:col-span-12">
                     <label class="block text-xs font-bold text-orange-600 mb-1">⚠️ Responsável pela Ocorrência</label>
-                    <select onchange="updateOcorrencia(${oc.id}, 'culpado', this.value)" class="w-full px-3 py-1.5 border border-orange-300 rounded text-sm focus:ring-orange-500 focus:border-orange-500">
+                    <select onchange="updateOcorrencia(${oc.id}, 'culpado', this.value)" class="w-full px-3 py-1.5 border border-orange-300 rounded text-sm focus:ring-orange-500 focus:border-orange-500 bg-white text-gray-900">
                         <option value="" ${!oc.culpado ? 'selected' : ''}>-- Selecione o Responsável --</option>
                         <option value="operacional" ${oc.culpado === 'operacional' ? 'selected' : ''}>🔧 Setor Operacional</option>
                         <option value="motorista"   ${oc.culpado === 'motorista'   ? 'selected' : ''}>🚗 Motorista</option>

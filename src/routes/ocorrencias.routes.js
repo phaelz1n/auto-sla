@@ -263,4 +263,17 @@ router.delete('/ocorrencias/:id', async (req, res) => {
     }
 });
 
+// ─── PUT: atualizar ocorrência ───────────────────────────────────────────────
+router.put('/ocorrencias/:id', async (req, res) => {
+    if (!db) return res.status(500).json({ error: "Firebase não configurado." });
+    try {
+        const updateData = req.body;
+        await db.collection('ocorrencias').doc(req.params.id).update(updateData);
+        res.json({ success: true, message: "Ocorrência atualizada" });
+    } catch (err) {
+        console.error("Erro ao atualizar:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
