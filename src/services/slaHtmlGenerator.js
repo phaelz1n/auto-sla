@@ -422,6 +422,7 @@ async function gerarSLAHtml(cliente_id, periodo, rotasMensais) {
 
     <!-- CAPA -->
     <div class="capa">
+        <img src="/logo.png" alt="Logo Empresa" style="position: absolute; top: 2rem; right: 2rem; height: 50px; object-fit: contain; z-index: 10;">
         <div class="capa-badge">Acordo de Nível de Serviço</div>
         <div class="capa-title">SLA Operacional</div>
         <div class="capa-sub">${nome_cliente}</div>

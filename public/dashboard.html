@@ -346,6 +346,7 @@
             #heat-year-select,
             .dash-select,
             .divider { display: none !important; }
+            .print-header { display: flex !important; align-items: center; justify-content: space-between; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
 
             /* Layout da página */
             html, body { background: #fff !important; }
@@ -430,6 +431,15 @@
     </style>
 </head>
 <body>
+
+    <!-- ══════════ PRINT HEADER ══════════ -->
+    <div class="print-header hidden" style="display: none;">
+        <div>
+            <div style="font-size:1.2rem; font-weight:bold; color:#111;">Auto SLA</div>
+            <div style="font-size:0.8rem; color:#555;">Dashboard Executivo</div>
+        </div>
+        <img src="/logo.png" alt="Logo Empresa" style="height: 40px; object-fit: contain;">
+    </div>
 
     <!-- ══════════ TOPBAR ══════════ -->
     <header class="topbar">
