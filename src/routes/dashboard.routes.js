@@ -72,7 +72,7 @@ router.get('/dashboard/metrics', async (req, res) => {
         const totalClientes    = Object.keys(clientes).length;
 
         // ── Categorias de culpado ────────────────────────────────────────────
-        const porCulpado = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+        const porCulpado = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
         ocorrencias.forEach(oc => {
             const c = oc.culpado;
             if (c && Object.prototype.hasOwnProperty.call(porCulpado, c)) {
@@ -94,7 +94,7 @@ router.get('/dashboard/metrics', async (req, res) => {
                     total: 0,
                     porMes: {},
                     porAno: {},
-                    porCulpado: { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 }
+                    porCulpado: { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 }
                 };
             }
             porCliente[cid].total++;
@@ -137,7 +137,7 @@ router.get('/dashboard/metrics', async (req, res) => {
             serieTemporal[chave] = (serieTemporal[chave] || 0) + 1;
 
             if (!serieTemporalCulpado[chave]) {
-                serieTemporalCulpado[chave] = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+                serieTemporalCulpado[chave] = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
             }
             const c = oc.culpado;
             if (c && Object.prototype.hasOwnProperty.call(serieTemporalCulpado[chave], c)) {

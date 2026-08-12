@@ -86,6 +86,8 @@ const CULPA_LABELS = {
     motorista:   'Motorista',
     oficina:     'Oficina',
     cliente:     'Erro do Cliente',
+    fator_externo: 'Fator Externo',
+    chapeacao:   'Chapeação',
     '':          'Nao informado'
 };
 function culpaLabel(c) {
@@ -178,7 +180,7 @@ async function gerarSLAAutomatizado(periodo, clientesList, rotasMap) {
             else if (metaPct >= 97.0) nivel = 'Padrao de Mercado (Saudavel)';
 
             // Contagem de culpados no mes
-            const culpadosMes = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+            const culpadosMes = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
             (agrupado[monthStr] || []).forEach(oc => {
                 const c = oc.culpado;
                 if (c && culpadosMes.hasOwnProperty(c)) culpadosMes[c]++;
@@ -217,7 +219,7 @@ async function gerarSLAAutomatizado(periodo, clientesList, rotasMap) {
             : periodo;
 
         /* ── Contagem global de culpados ────────────────────────── */
-        const culpadosGeral = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+        const culpadosGeral = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
         ocorrenciasList.forEach(oc => {
             const c = oc.culpado;
             if (c && culpadosGeral.hasOwnProperty(c)) culpadosGeral[c]++;
@@ -372,7 +374,7 @@ async function gerarSLAAutomatizado(periodo, clientesList, rotasMap) {
 
         /* ── RESPONSABILIDADE DO OPERADOR – PERIODO COMPLETO ────── */
         if (somaOcorrencias > 0) {
-            const totalOperador = culpadosGeral.operacional + culpadosGeral.motorista + culpadosGeral.oficina;
+            const totalOperador = culpadosGeral.operacional + culpadosGeral.motorista + culpadosGeral.oficina + culpadosGeral.chapeacao + culpadosGeral.sem_info;
             const pctOperador = ((totalOperador / somaOcorrencias) * 100).toFixed(1).replace('.', ',') + '%';
             sections.push(
                 new Paragraph({
@@ -411,7 +413,7 @@ async function gerarSLAAutomatizado(periodo, clientesList, rotasMap) {
                 }),
                 new Paragraph({
                     children: (() => {
-                        const totalOp = mr.culpados.operacional + mr.culpados.motorista + mr.culpados.oficina;
+                        const totalOp = mr.culpados.operacional + mr.culpados.motorista + mr.culpados.oficina + mr.culpados.chapeacao + mr.culpados.sem_info;
                         const pctOp = mr.ocorrencias > 0
                             ? ((totalOp / mr.ocorrencias) * 100).toFixed(1).replace('.', ',') + '%'
                             : '0,0%';

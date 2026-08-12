@@ -158,6 +158,8 @@ window.renderOcorrencias = function() {
                         <option value="motorista"   ${oc.culpado === 'motorista'   ? 'selected' : ''}>🚗 Motorista</option>
                         <option value="oficina"     ${oc.culpado === 'oficina'     ? 'selected' : ''}>🏭 Oficina</option>
                         <option value="cliente"     ${oc.culpado === 'cliente'     ? 'selected' : ''}>👤 Erro do Cliente</option>
+                        <option value="fator_externo" ${oc.culpado === 'fator_externo' ? 'selected' : ''}>🌩️ Fator Externo</option>
+                        <option value="chapeacao"   ${oc.culpado === 'chapeacao'   ? 'selected' : ''}>🔨 Chapeação</option>
                     </select>
                 </div>
             </div>

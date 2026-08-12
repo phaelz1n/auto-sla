@@ -37,6 +37,8 @@
         motorista:   { label: 'Motorista',          color: '#06b6d4', emoji: '🚗' },
         oficina:     { label: 'Oficina',             color: '#8b5cf6', emoji: '🏭' },
         cliente:     { label: 'Erro do Cliente',     color: '#10b981', emoji: '👤' },
+        fator_externo: { label: 'Fator Externo',   color: '#eab308', emoji: '🌩️' },
+        chapeacao:   { label: 'Chapeação',         color: '#ec4899', emoji: '🔨' },
         sem_info:    { label: 'Sem Informacao',      color: '#94a3b8', emoji: '❓' }
     };
 

@@ -78,13 +78,13 @@ async function gerarSLAHtml(cliente_id, periodo, rotasMensais) {
         else if (pct >= 97.0) { nivel = 'Padrão de Mercado'; corNivel = '#d97706'; }
 
         // culpado por mês
-        const culpados = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+        const culpados = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
         (agrupado[ms] || []).forEach(oc => {
             const c = oc.culpado;
             if (c && culpados.hasOwnProperty(c)) culpados[c]++;
             else culpados.sem_info++;
         });
-        const totalOp = culpados.operacional + culpados.motorista + culpados.oficina;
+        const totalOp = culpados.operacional + culpados.motorista + culpados.oficina + culpados.chapeacao + culpados.sem_info;
         const pctOp = ocsMes > 0 ? ((totalOp / ocsMes) * 100).toFixed(1) : '0.0';
 
         mesesResultados.push({ ms, rotas, ocorrencias: ocsMes, pct, nivel, corNivel, culpados, pctOp, lista: agrupado[ms] || [] });
@@ -104,13 +104,13 @@ async function gerarSLAHtml(cliente_id, periodo, rotasMensais) {
     const peso        = mediaRotas > 0 ? ((1 / mediaRotas) * 100).toFixed(3) : '0.000';
 
     // Culpados geral
-    const cg = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, sem_info: 0 };
+    const cg = { operacional: 0, motorista: 0, oficina: 0, cliente: 0, fator_externo: 0, chapeacao: 0, sem_info: 0 };
     ocorrenciasList.forEach(oc => {
         const c = oc.culpado;
         if (c && cg.hasOwnProperty(c)) cg[c]++;
         else cg.sem_info++;
     });
-    const totalOpGeral = cg.operacional + cg.motorista + cg.oficina;
+    const totalOpGeral = cg.operacional + cg.motorista + cg.oficina + cg.chapeacao + cg.sem_info;
     const pctOpGeral   = somaOcorrencias > 0 ? ((totalOpGeral / somaOcorrencias) * 100).toFixed(1) : '0.0';
 
     const dtEmissao = new Date().toLocaleDateString('pt-BR');
